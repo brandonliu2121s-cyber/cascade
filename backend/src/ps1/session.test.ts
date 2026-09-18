@@ -6,7 +6,7 @@ import { solve } from "./solve";
 import { parseCsv } from "./csv";
 import { newSession, replaceSessionFiles, withSessionOptions, withSessionScenario, acceptSessionResponse, editActivity, editResources, applySessionPreview } from "../../../src/lib/planning-session";
 
-const files = Object.fromEntries(INPUT_FILES.map((name) => [name, readFileSync(resolve(__dirname, "../../data/ps1", name), "utf8")]));
+const files = Object.fromEntries(INPUT_FILES.map((name) => [name, readFileSync(resolve(__dirname, "../../data/official_dataset", name), "utf8")]));
 function solved() {
   const state = newSession(files);
   const response = { instance: state.instance!, solutions: (["A", "B", "C"] as const).map((scenario) => solve(state.instance!, scenario)) };

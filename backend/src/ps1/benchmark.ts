@@ -8,7 +8,7 @@ import { comparePlans } from "./replan";
 import type { Activity, CapacityChange, Contract, Instance, Nature, Scenario, Solution } from "./types";
 
 export function benchmarkInstances(): { name: string; instance: Instance }[] {
-  const directory = resolve(__dirname, "../../data/ps1");
+  const directory = resolve(__dirname, "../../data/official_dataset");
   const source = parseInstance(Object.fromEntries(INPUT_FILES.map(name => [name, readFileSync(resolve(directory, name), "utf8")])));
   const make = (name: string, specs: { location: string; units: number; nature?: Nature; predecessor?: number; startWeek?: number }[]) => {
     const instance: Instance = { ...structuredClone(source), horizon_weeks: 18, contracts: [], activities: [] };

@@ -17,7 +17,7 @@ const validateSchema = z.object({ files: filesSchema, scenario: scenarioSchema, 
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : "Invalid input";
 router.get("/sample", (_req, res) => {
   try {
-    const files = Object.fromEntries(INPUT_FILES.map((name) => [name, readFileSync(resolve(__dirname, "../../data/ps1", name), "utf8")]));
+    const files = Object.fromEntries(INPUT_FILES.map((name) => [name, readFileSync(resolve(__dirname, "../../data/official_dataset", name), "utf8")]));
     res.json({ files, source: "https://github.com/aochinwen/NebulaX-Hackathon-ProblemStatement/tree/main/PS1/01_data" });
   } catch { res.status(500).json({ error: "Bundled public dataset is unavailable. Upload the eight official CSV files." }); }
 });

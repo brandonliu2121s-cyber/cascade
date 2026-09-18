@@ -11,7 +11,7 @@ const unknown = args.filter((arg) => arg.startsWith("--") && arg !== "--allow-ho
 if (args.includes("--help")) { console.log(usage); process.exit(0); }
 if (unknown.length || positional.length > 2) { console.error(usage); process.exit(1); }
 const options = { allowHorizonExtension: args.includes("--allow-horizon-extension") };
-const inputDirectory = resolve(positional[0] || "data/ps1");
+const inputDirectory = resolve(positional[0] || "data/official_dataset");
 const outputDirectory = resolve(positional[1] || "../submission/ps1");
 try {
   const files = Object.fromEntries(INPUT_FILES.map((name) => [name, readFileSync(resolve(inputDirectory, name), "utf8")]));

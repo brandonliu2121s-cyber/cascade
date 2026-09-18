@@ -1,4 +1,13 @@
-export interface PlanningOptions { allowHorizonExtension?: boolean }
+export interface CapacityChange {
+  location_id: string;
+  from_week: number;
+  to_week: number;
+  supply_capacity: number;
+}
+export interface PlanningOptions {
+  allowHorizonExtension?: boolean;
+  capacityChanges?: CapacityChange[];
+}
 export type Scenario = "A" | "B" | "C";
 export type Nature = "Live" | "Non-live (Consist)" | "Non-live (Others)";
 export type AccessType = "PM" | "PC" | "C";
@@ -36,4 +45,25 @@ export interface Solution {
   scenario: Scenario; access: Placement[]; occupancy: Occupancy[]; results: Result[]; report: Report;
   csv: Record<string, string>; explanations: { activity_id: string; detail: string }[];
   warnings: string[];
+}
+export interface ReplanComparison {
+  scenario: Scenario;
+  frozenPlacements: number;
+  retainedPlacements: number;
+  changedActivities: string[];
+  directlyAffectedActivities: string[];
+  changes: {
+    activity_id: string;
+    beforeWeeks: number[];
+    afterWeeks: number[];
+    beforeUnits: number;
+    afterUnits: number;
+    reason: string;
+  }[];
+  contractChanges: {
+    contract_number: string;
+    beforeCompletion: string;
+    afterCompletion: string;
+    delayDays: number;
+  }[];
 }

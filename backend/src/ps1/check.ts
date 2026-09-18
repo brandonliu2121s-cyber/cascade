@@ -1,5 +1,6 @@
 import { day, weekEnd, weekOf } from "./instance";
 import { footprint, legalMix } from "./topology";
+import { capacityAt, validateCapacityChanges } from "./capacity";
 import type { Instance, Scenario, Placement, Occupancy, Result, Report, Violation, Footprint, PlanningOptions } from "./types";
 
 export function completionResults(instance: Instance, scenario: Scenario, access: Placement[]): Result[] {
@@ -11,6 +12,7 @@ export function completionResults(instance: Instance, scenario: Scenario, access
   });
 }
 export function checkSchedule(instance: Instance, scenario: Scenario, access: Placement[], occupancy: Occupancy[], results?: Result[], options: PlanningOptions = {}): Report {
+  validateCapacityChanges(instance, options.capacityChanges);
   const hard: Violation[] = [];
   const fail = (rule: string, detail: string) => hard.push({ rule, severity: "hard", detail });
   const activities = new Map(instance.activities.map((a) => [a.activity_id, a]));
@@ -92,10 +94,12 @@ export function checkSchedule(instance: Instance, scenario: Scenario, access: Pl
   let excess = 0;
   const hotspots: Report["detail"]["capacity_hotspots"] = [];
   for (const [key, slots] of usage) {
-    const [location_id, weekString] = key.split("|"); const capacity = locations.get(location_id)!.supply_capacity;
+    const [location_id, weekString] = key.split("|");
+    const week = Number(weekString);
+    const capacity = capacityAt(instance, location_id, week, options);
     const extra = Math.max(0, slots.size - capacity); excess += extra;
     if ((scenario === "A" && extra > 0) || (scenario === "C" && extra > 1)) fail("capacity", `${key}: ${slots.size} groups against capacity ${capacity}`);
-    if (slots.size >= capacity) hotspots.push({ location_id, week: Number(weekString), used: slots.size, capacity });
+    if (slots.size >= capacity) hotspots.push({ location_id, week, used: slots.size, capacity });
   }
   for (const [week, placements] of byWeek) {
     const ids = [...new Set(placements.map((p) => p.activity_id))];

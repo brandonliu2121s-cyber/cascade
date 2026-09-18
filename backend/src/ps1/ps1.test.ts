@@ -8,7 +8,7 @@ import { solve } from "./solve";
 import { checkSchedule } from "./check";
 import type { Instance, Placement } from "./types";
 
-const directory = resolve(__dirname, "../../data/ps1");
+const directory = resolve(__dirname, "../../data/official_dataset");
 const files = Object.fromEntries(readdirSync(directory).filter((f) => f.endsWith(".csv")).map((f) => [f, readFileSync(resolve(directory, f), "utf8")]));
 const publicInstance = () => parseInstance(files);
 function tiny(): Instance {

@@ -2,7 +2,8 @@ import { day, weekOf, weekEnd } from "./instance";
 import { footprint, legalMix } from "./topology";
 import { checkSchedule, completionResults } from "./check";
 import { writeCsv } from "./csv";
-import type { Instance, Scenario, Placement, Occupancy, Solution, Footprint, PlanningOptions } from "./types";
+import { capacityAt, validateCapacityChanges } from "./capacity";
+import type { Instance, Scenario, Placement, Occupancy, Solution, Footprint, PlanningOptions, Activity } from "./types";
 
 interface Packed { placement: Placement; group: string; footprint: Footprint; contract: string; activity_type: string }
 function attempt(instance: Instance, scenario: Scenario, strategy: number, useEclo: boolean, aggressive = false, options: PlanningOptions = {}, preferNominal = false): Solution {
@@ -12,7 +13,6 @@ function attempt(instance: Instance, scenario: Scenario, strategy: number, useEc
   const remaining = new Map(instance.activities.map((a) => [a.activity_id, a.total_accesses]));
   const finishes = new Map<string, number>(); const accesses: Placement[] = []; const occupancy: Occupancy[] = [];
   const sequences = new Map<string, number>(); const windows = new Map<string, number>();
-  const supply = new Map(instance.supplies.map((s) => [s.location_id, s.supply_capacity]));
   const waiting = new Map<string, Set<string>>();
   const chainLength = (id: string): number => {
     const successors = instance.activities.filter((a) => a.predecessor_activity_id === id);
@@ -92,7 +92,7 @@ function attempt(instance: Instance, scenario: Scenario, strategy: number, useEc
           const same = occupants.filter((p) => p.group === group);
           if (!legalMix([...same.map((p) => contracts.get(p.contract)!.access_type), c.access_type])) { reasons.add("possession mix or four-activity limit"); valid = false; break; }
           const groups = new Set([...occupants.map((p) => p.group), group]);
-          const extra = Math.max(0, groups.size - supply.get(loc)!);
+          const extra = Math.max(0, groups.size - capacityAt(instance, loc, week, options));
           if ((scenario === "A" && extra > 0) || (scenario === "C" && extra > 1)) { reasons.add("location supply capacity"); valid = false; break; }
           // Try a cheaper B plan before buying another possession. Keep the
           // unrestricted passes as fallback when congestion consumes the slack.
@@ -119,7 +119,7 @@ function attempt(instance: Instance, scenario: Scenario, strategy: number, useEc
       const rest = units - (eclo ? 1.5 : 1); remaining.set(job.activity_id, rest);
       if (rest <= 0) finishes.set(job.activity_id, week);
     }
-    if (!packed.length && week >= Math.max(...instance.activities.map((a) => weekOf(instance, a.planned_start_date)))) break;
+    if (!packed.length && !ready.length && week >= Math.max(...instance.activities.map((a) => weekOf(instance, a.planned_start_date)))) break;
   }
   accesses.sort((a, b) => a.activity_id.localeCompare(b.activity_id) || a.week - b.week);
   // Remove ECLO that provides only surplus workload; this changes neither
@@ -156,7 +156,13 @@ function attempt(instance: Instance, scenario: Scenario, strategy: number, useEc
     "RESULTS.csv": writeCsv(["scenario", "contract_number", "simulated_completion_date", "overrun_days"], results),
   } };
 }
-export function solve(instance: Instance, scenario: Scenario, options: PlanningOptions = {}): Solution {
+export function solve(instance: Instance, scenario: Scenario, options: PlanningOptions = {}, _repair?: { baseline: Solution; fromWeek: number }): Solution {
+  validateCapacityChanges(instance, options.capacityChanges);
+  if (_repair) return solveRepair(instance, scenario, options, _repair);
+  return solveFresh(instance, scenario, options);
+}
+
+function solveFresh(instance: Instance, scenario: Scenario, options: PlanningOptions): Solution {
   const candidates: Solution[] = [];
   for (let strategy = 0; strategy < 4; strategy++) {
     candidates.push(attempt(instance, scenario, strategy, scenario === "B", false, options));
@@ -167,4 +173,66 @@ export function solve(instance: Instance, scenario: Scenario, options: PlanningO
   }
   candidates.sort((a, b) => Number(!a.report.feasible) - Number(!b.report.feasible) || (a.report.detail.total_activities - a.report.detail.completed_activities) - (b.report.detail.total_activities - b.report.detail.completed_activities) || a.report.hard_violations.length - b.report.hard_violations.length || (a.report.soft_scores.objective_score ?? a.report.soft_scores.priority_weighted_score) - (b.report.soft_scores.objective_score ?? b.report.soft_scores.priority_weighted_score) || a.report.detail.horizon_weeks_used - b.report.detail.horizon_weeks_used);
   return candidates[0];
+}
+
+function weekStartDate(instance: Instance, week: number): string {
+  return new Date(Date.parse(`${instance.horizon_start}T00:00:00Z`) + (week - 1) * 7 * 86_400_000).toISOString().slice(0, 10);
+}
+
+function solveRepair(instance: Instance, scenario: Scenario, options: PlanningOptions, repair: { baseline: Solution; fromWeek: number }): Solution {
+  const fromWeek = Math.max(1, Math.floor(repair.fromWeek));
+  const baseline = repair.baseline;
+  const frozenAccess = baseline.access.filter((row) => row.week < fromWeek).map((row) => ({ ...row }));
+  const frozenOccupancy = baseline.occupancy.filter((row) => row.week < fromWeek).map((row) => ({ ...row }));
+  const delivered = new Map<string, number>();
+  const frozenCount = new Map<string, number>();
+  const frozenLatestWeek = new Map<string, number>();
+  for (const row of frozenAccess) {
+    delivered.set(row.activity_id, (delivered.get(row.activity_id) ?? 0) + (row.eclo ? 1.5 : 1));
+    frozenCount.set(row.activity_id, (frozenCount.get(row.activity_id) ?? 0) + 1);
+    frozenLatestWeek.set(row.activity_id, Math.max(frozenLatestWeek.get(row.activity_id) ?? 0, row.week));
+  }
+  const draftedActivities: Activity[] = instance.activities
+    .map((activity) => {
+      const remaining = Math.max(0, activity.total_accesses - (delivered.get(activity.activity_id) ?? 0));
+      if (remaining <= 0) return null;
+      const earliest = Math.max(weekOf(instance, activity.planned_start_date), fromWeek, (frozenLatestWeek.get(activity.activity_id) ?? 0) + 1);
+      return { ...activity, total_accesses: remaining, planned_start_date: weekStartDate(instance, earliest) };
+    })
+    .filter((activity): activity is Activity => activity !== null);
+  const draftedActivityIds = new Set(draftedActivities.map((activity) => activity.activity_id));
+  const remainingActivities: Activity[] = draftedActivities.map((activity) => {
+      if (!activity.predecessor_activity_id) return activity;
+      return draftedActivityIds.has(activity.predecessor_activity_id) ? activity : { ...activity, predecessor_activity_id: null };
+    });
+  const rebuilt = remainingActivities.length ? solveFresh({ ...instance, activities: remainingActivities }, scenario, options) : null;
+  const repairedAccess = [
+    ...frozenAccess,
+    ...(rebuilt?.access ?? []).map((row) => ({ ...row, access_seq: row.access_seq + (frozenCount.get(row.activity_id) ?? 0) })),
+  ].sort((a, b) => a.activity_id.localeCompare(b.activity_id) || a.week - b.week);
+  for (const activityId of new Set(repairedAccess.map((row) => row.activity_id))) {
+    let sequence = 1;
+    for (const row of repairedAccess.filter((entry) => entry.activity_id === activityId)) row.access_seq = sequence++;
+  }
+  const repairedOccupancy = [...frozenOccupancy, ...(rebuilt?.occupancy ?? [])].sort((a, b) => a.activity_id.localeCompare(b.activity_id) || a.week - b.week || a.location_id.localeCompare(b.location_id));
+  const results = completionResults(instance, scenario, repairedAccess);
+  const report = checkSchedule(instance, scenario, repairedAccess, repairedOccupancy, results, options);
+  const warnings = rebuilt?.warnings ?? [];
+  const explanations = instance.activities.map((activity) => rebuilt?.explanations.find((row) => row.activity_id === activity.activity_id)
+    ?? baseline.explanations.find((row) => row.activity_id === activity.activity_id)
+    ?? { activity_id: activity.activity_id, detail: "Preserved from baseline history." });
+  return {
+    scenario,
+    access: repairedAccess,
+    occupancy: repairedOccupancy,
+    results,
+    report,
+    explanations,
+    warnings,
+    csv: {
+      "SCHEDULE_ACCESS.csv": writeCsv(["activity_id", "access_seq", "week", "eclo", "access_night"], repairedAccess),
+      "SCHEDULE_OCCUPANCY.csv": writeCsv(["activity_id", "week", "location_id", "co_share_group"], repairedOccupancy),
+      "RESULTS.csv": writeCsv(["scenario", "contract_number", "simulated_completion_date", "overrun_days"], results),
+    },
+  };
 }

@@ -8,7 +8,7 @@ import { checkSchedule } from "./check";
 import type { Instance, Placement } from "./types";
 
 function fixture(): Instance {
-  const source = parseInstance(Object.fromEntries(INPUT_FILES.map((name) => [name, readFileSync(resolve(__dirname, "../../data/ps1", name), "utf8")])));
+  const source = parseInstance(Object.fromEntries(INPUT_FILES.map((name) => [name, readFileSync(resolve(__dirname, "../../data/official_dataset", name), "utf8")])));
   const contract = { ...source.contracts[0], contract_number: "C1", nature_of_activity: "Non-live (Others)" as const, access_type: "PM" as const, number_of_maximum_access_per_week: 1, number_of_workfronts: 1, planned_completion_date: weekEnd(source, 10) };
   const job = { ...source.activities[0], activity_id: "A1", contract_number: "C1", total_accesses: 1, planned_start_date: source.horizon_start, predecessor_activity_id: null, start_location_id: "SEC:ALP:S01_S02:EB", end_location_id: "SEC:ALP:S01_S02:EB" };
   return { ...source, horizon_weeks: 10, contracts: [contract], activities: [job], supplies: source.supplies.map((s) => ({ ...s, supply_capacity: 1 })) };
