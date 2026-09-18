@@ -35,6 +35,27 @@ describe("PS1 API", () => {
     const invalid = await post("/validate", { files: sample.files, scenario: "A", submission: corrupted });
     expect((await invalid.json()).feasible).toBe(false);
   }, 30000);
+  it("uses the same explicit horizon policy for solve and CSV recheck", async () => {
+    const sample = await (await fetch(base + "/sample")).json();
+    const files = { ...sample.files, "06_PARAMETERS.csv": "key,value\nhorizon_start,2027-01-04\nhorizon_weeks,1\n" };
+    const strictResponse = await post("/solve", { files, scenario: "A" });
+    expect(strictResponse.status).toBe(200);
+    const strict = (await strictResponse.json()).solutions[0];
+    expect(strict.report.feasible).toBe(false);
+    expect(strict.access.every((p: { week: number }) => p.week <= 1)).toBe(true);
+    const options = { allowHorizonExtension: true };
+    const extendedResponse = await post("/solve", { files, scenario: "A", options });
+    expect(extendedResponse.status).toBe(200);
+    const extended = (await extendedResponse.json()).solutions[0];
+    expect(extended.report.feasible).toBe(true);
+    const body = { files, scenario: "A", submission: extended.csv };
+    const strictCheck = await post("/validate", body);
+    expect((await strictCheck.json()).hard_violations.some((v: { rule: string }) => v.rule === "horizon")).toBe(true);
+    const extendedCheck = await post("/validate", { ...body, options });
+    expect(extendedCheck.status).toBe(200);
+    expect((await extendedCheck.json()).feasible).toBe(true);
+    expect((await post("/solve", { files, options: { allowHorizonExtension: "yes" } })).status).toBe(400);
+  });
   it("returns CSV parse errors instead of silently converting invalid numbers", async () => {
     const sample = await (await fetch(base + "/sample")).json();
     const response = await post("/validate", { files: sample.files, scenario: "A", submission: { "SCHEDULE_ACCESS.csv": "activity_id,access_seq,week,eclo,access_night\nA001,1,no,0,1", "SCHEDULE_OCCUPANCY.csv": "activity_id,week,location_id,co_share_group\n", "RESULTS.csv": "scenario,contract_number,simulated_completion_date,overrun_days\n" } });

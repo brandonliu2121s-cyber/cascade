@@ -2,10 +2,10 @@ import { day, weekOf, weekEnd } from "./instance";
 import { footprint, legalMix } from "./topology";
 import { checkSchedule, completionResults } from "./check";
 import { writeCsv } from "./csv";
-import type { Instance, Scenario, Placement, Occupancy, Solution, Footprint } from "./types";
+import type { Instance, Scenario, Placement, Occupancy, Solution, Footprint, PlanningOptions } from "./types";
 
 interface Packed { placement: Placement; group: string; footprint: Footprint; contract: string; activity_type: string }
-function attempt(instance: Instance, scenario: Scenario, strategy: number, useEclo: boolean, aggressive = false): Solution {
+function attempt(instance: Instance, scenario: Scenario, strategy: number, useEclo: boolean, aggressive = false, options: PlanningOptions = {}, preferNominal = false): Solution {
   const contracts = new Map(instance.contracts.map((c) => [c.contract_number, c]));
   const jobs = new Map(instance.activities.map((a) => [a.activity_id, a]));
   const footprints = new Map(instance.activities.map((a) => [a.activity_id, footprint(instance, a)]));
@@ -19,11 +19,27 @@ function attempt(instance: Instance, scenario: Scenario, strategy: number, useEc
     return successors.length ? Math.max(...successors.map((a) => Math.ceil(a.total_accesses / (scenario === "B" ? 1.5 : 1)) + chainLength(a.activity_id))) : 0;
   };
   const tails = new Map(instance.activities.map((a) => [a.activity_id, chainLength(a.activity_id)]));
-  const maxWeeks = Math.min(20000, Math.max(instance.horizon_weeks, ...instance.activities.map((a) => weekOf(instance, a.planned_start_date))) + instance.activities.reduce((n, a) => n + Math.ceil(a.total_accesses), 0) + 2);
+  // A predecessor must also protect the dates of contracts downstream of it.
+  const latestFinishes = new Map<string, number>();
+  const latestFinish = (id: string): number => {
+    if (latestFinishes.has(id)) return latestFinishes.get(id)!;
+    const job = jobs.get(id)!;
+    const contract = contracts.get(job.contract_number)!;
+    let latest = Math.floor((day(contract.planned_completion_date) - day(instance.horizon_start) + 1) / 7);
+    for (const successor of instance.activities.filter((a) => a.predecessor_activity_id === id)) {
+      const duration = Math.ceil(successor.total_accesses / (useEclo ? 1.5 : 1));
+      latest = Math.min(latest, latestFinish(successor.activity_id) - duration);
+    }
+    latestFinishes.set(id, latest);
+    return latest;
+  };
+  instance.activities.forEach((a) => latestFinish(a.activity_id));
+  const maxWeeks = options.allowHorizonExtension ? Math.min(20000, Math.max(instance.horizon_weeks, ...instance.activities.map((a) => weekOf(instance, a.planned_start_date))) + instance.activities.reduce((n, a) => n + Math.ceil(a.total_accesses), 0) + 2) : instance.horizon_weeks;
   for (let week = 1; week <= maxWeeks && finishes.size < jobs.size; week++) {
     const packed: Packed[] = [];
     const ready = instance.activities.filter((a) => remaining.get(a.activity_id)! > 0 && week >= weekOf(instance, a.planned_start_date) && (!a.predecessor_activity_id || (finishes.has(a.predecessor_activity_id) && finishes.get(a.predecessor_activity_id)! < week)));
     const slack = (id: string): number => {
+      if (strategy === 3) return latestFinish(id) - week + 1 - Math.ceil(remaining.get(id)! / (useEclo ? 1.5 : 1));
       const job = jobs.get(id)!; const c = contracts.get(job.contract_number)!;
       const deadline = Math.floor((day(c.planned_completion_date) - day(instance.horizon_start) + 1) / 7);
       return deadline - week + 1 - Math.ceil(remaining.get(id)! / (scenario === "B" ? 1.5 : 1)) - tails.get(id)!;
@@ -33,6 +49,7 @@ function attempt(instance: Instance, scenario: Scenario, strategy: number, useEc
       const tier = ca.contract_priority - cb.contract_priority;
       const urgency = slack(a.activity_id) - slack(b.activity_id);
       const length = remaining.get(b.activity_id)! - remaining.get(a.activity_id)!;
+      if (strategy === 3) return urgency || tier || a.activity_priority - b.activity_priority || length || a.activity_id.localeCompare(b.activity_id);
       if (strategy === 0) return urgency || tier || length || a.activity_id.localeCompare(b.activity_id);
       if (strategy === 1) return tier || urgency || length || a.activity_id.localeCompare(b.activity_id);
       return (day(ca.planned_completion_date) - day(cb.planned_completion_date)) || urgency || tier || a.activity_id.localeCompare(b.activity_id);
@@ -40,7 +57,7 @@ function attempt(instance: Instance, scenario: Scenario, strategy: number, useEc
     for (const job of ready) {
       const c = contracts.get(job.contract_number)!; const f = footprints.get(job.activity_id)!;
       const units = remaining.get(job.activity_id)!;
-      const latestWeek = Math.floor((day(c.planned_completion_date) - day(instance.horizon_start) + 1) / 7);
+      const latestWeek = strategy === 3 ? latestFinish(job.activity_id) : Math.floor((day(c.planned_completion_date) - day(instance.horizon_start) + 1) / 7);
       const weeksLeft = Math.max(0, latestWeek - week + 1);
       let eclo: 0 | 1 = 0;
       if (useEclo && scenario !== "A" && units > 1 && (units > weeksLeft || aggressive)) {
@@ -61,6 +78,7 @@ function attempt(instance: Instance, scenario: Scenario, strategy: number, useEc
       for (let groupIndex = 1; groupIndex <= packed.length + 1; groupIndex++) {
         const group = `b${groupIndex}`;
         let valid = true;
+        let extraCost = 0;
         for (const other of packed) {
           const collision = f.closure.filter((loc) => other.footprint.closure.includes(loc));
           if (!collision.length) continue;
@@ -76,6 +94,18 @@ function attempt(instance: Instance, scenario: Scenario, strategy: number, useEc
           const groups = new Set([...occupants.map((p) => p.group), group]);
           const extra = Math.max(0, groups.size - supply.get(loc)!);
           if ((scenario === "A" && extra > 0) || (scenario === "C" && extra > 1)) { reasons.add("location supply capacity"); valid = false; break; }
+          // Try a cheaper B plan before buying another possession. Keep the
+          // unrestricted passes as fallback when congestion consumes the slack.
+          const addsExtra = !occupants.some((p) => p.group === group) && extra > 0;
+          if (addsExtra) extraCost += 7;
+          const standardWeeks = Math.ceil(units);
+          const spareWeeks = Math.min(latestFinish(job.activity_id), maxWeeks) - week + 1 - standardWeeks;
+          if (preferNominal && scenario === "B" && addsExtra && spareWeeks > 0) { reasons.add("avoiding extra supply while deadline slack remains"); valid = false; break; }
+        }
+        const delayWeight = ({ 1: 100, 2: 10, 3: 1 }[c.contract_priority] ?? 1) * (1 + ({ 1: 0.3, 2: 0.2, 3: 0 }[job.activity_priority] ?? 0));
+        const isLeaf = !instance.activities.some((a) => a.predecessor_activity_id === job.activity_id);
+        if (valid && preferNominal && scenario === "C" && isLeaf && Math.ceil(units) <= maxWeeks - week && extraCost > delayWeight * 7) {
+          reasons.add("trying a lower-cost delay instead of excess supply"); valid = false;
         }
         if (valid) { chosenGroup = group; break; }
       }
@@ -101,7 +131,7 @@ function attempt(instance: Instance, scenario: Scenario, strategy: number, useEc
   }
   occupancy.sort((a, b) => a.activity_id.localeCompare(b.activity_id) || a.week - b.week || a.location_id.localeCompare(b.location_id));
   const results = completionResults(instance, scenario, accesses);
-  const report = checkSchedule(instance, scenario, accesses, occupancy, results);
+  const report = checkSchedule(instance, scenario, accesses, occupancy, results, options);
   const sharingGroups = new Map<string, Set<string>>();
   for (const o of occupancy) {
     const key = `${o.week}|${o.location_id}|${o.co_share_group}`;
@@ -117,6 +147,7 @@ function attempt(instance: Instance, scenario: Scenario, strategy: number, useEc
     return { activity_id: job.activity_id, detail: `${placements.length} access placements, finish ${last}. Contract priority ${c.contract_priority}. ${job.predecessor_activity_id ? `Starts after ${job.predecessor_activity_id}. ` : ""}${sharing ? "Shares compatible possession capacity. " : ""}${placements.some((p) => p.eclo) ? "Uses ECLO to reduce completion delay. " : ""}${reasons.length ? `Waited for ${reasons.join(", ")}.` : "Placed when planned start and capacity allowed."}` };
   });
   const warnings = ["Heuristic schedule; global optimality is not guaranteed. Check exported files with the organisers' validator when available.", "Local safety checks conservatively forbid overlapping buffers between separate possessions. The published reference sample contains overlaps under this interpretation; confirm the intended rule with organisers."];
+  if (!options.allowHorizonExtension && !report.feasible) warnings.push(`Planning is limited to the declared ${instance.horizon_weeks}-week horizon; incomplete workload is reported. Diagnostics do not prove mathematical infeasibility.`);
   if (report.detail.horizon_weeks_used > instance.horizon_weeks) warnings.push(`Planning extended from ${instance.horizon_weeks} to ${report.detail.horizon_weeks_used} weeks using the instance's flat weekly supply.`);
   if (!report.feasible && scenario === "B") warnings.push("A deadline-feasible B schedule was not found. All obtainable workload is retained; diagnostics do not prove mathematical infeasibility.");
   return { scenario, access: accesses, occupancy, results, report, explanations, warnings, csv: {
@@ -125,12 +156,14 @@ function attempt(instance: Instance, scenario: Scenario, strategy: number, useEc
     "RESULTS.csv": writeCsv(["scenario", "contract_number", "simulated_completion_date", "overrun_days"], results),
   } };
 }
-export function solve(instance: Instance, scenario: Scenario): Solution {
+export function solve(instance: Instance, scenario: Scenario, options: PlanningOptions = {}): Solution {
   const candidates: Solution[] = [];
-  for (let strategy = 0; strategy < 3; strategy++) {
-    candidates.push(attempt(instance, scenario, strategy, scenario === "B"));
-    if (scenario === "B") candidates.push(attempt(instance, scenario, strategy, true, true));
-    if (scenario === "C") candidates.push(attempt(instance, scenario, strategy, true));
+  for (let strategy = 0; strategy < 4; strategy++) {
+    candidates.push(attempt(instance, scenario, strategy, scenario === "B", false, options));
+    if (scenario === "B") candidates.push(attempt(instance, scenario, strategy, true, true, options));
+    if (scenario === "B") candidates.push(attempt(instance, scenario, strategy, true, false, options, true));
+    if (scenario === "C") candidates.push(attempt(instance, scenario, strategy, true, false, options));
+    if (scenario === "C") candidates.push(attempt(instance, scenario, strategy, true, false, options, true));
   }
   candidates.sort((a, b) => Number(!a.report.feasible) - Number(!b.report.feasible) || (a.report.detail.total_activities - a.report.detail.completed_activities) - (b.report.detail.total_activities - b.report.detail.completed_activities) || a.report.hard_violations.length - b.report.hard_violations.length || (a.report.soft_scores.objective_score ?? a.report.soft_scores.priority_weighted_score) - (b.report.soft_scores.objective_score ?? b.report.soft_scores.priority_weighted_score) || a.report.detail.horizon_weeks_used - b.report.detail.horizon_weeks_used);
   return candidates[0];

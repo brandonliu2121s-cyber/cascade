@@ -4,13 +4,20 @@ import { INPUT_FILES, parseInstance } from "./instance";
 import { solve } from "./solve";
 import type { Scenario } from "./types";
 
-const inputDirectory = resolve(process.argv[2] || "data/ps1");
-const outputDirectory = resolve(process.argv[3] || "../submission/ps1");
+const args = process.argv.slice(2);
+const usage = "Usage: npm run ps1:export -- [input-directory] [output-directory] [--allow-horizon-extension]";
+const positional = args.filter((arg) => !arg.startsWith("--"));
+const unknown = args.filter((arg) => arg.startsWith("--") && arg !== "--allow-horizon-extension" && arg !== "--help");
+if (args.includes("--help")) { console.log(usage); process.exit(0); }
+if (unknown.length || positional.length > 2) { console.error(usage); process.exit(1); }
+const options = { allowHorizonExtension: args.includes("--allow-horizon-extension") };
+const inputDirectory = resolve(positional[0] || "data/ps1");
+const outputDirectory = resolve(positional[1] || "../submission/ps1");
 try {
   const files = Object.fromEntries(INPUT_FILES.map((name) => [name, readFileSync(resolve(inputDirectory, name), "utf8")]));
   const instance = parseInstance(files);
   for (const scenario of ["A", "B", "C"] as Scenario[]) {
-    const solution = solve(instance, scenario); const destination = resolve(outputDirectory, scenario);
+    const solution = solve(instance, scenario, options); const destination = resolve(outputDirectory, scenario);
     mkdirSync(destination, { recursive: true });
     for (const [name, content] of Object.entries(solution.csv)) writeFileSync(resolve(destination, name), content, "utf8");
     writeFileSync(resolve(destination, "LOCAL_REPORT.json"), JSON.stringify(solution.report, null, 2) + "\n");

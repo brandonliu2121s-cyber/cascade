@@ -1,3 +1,4 @@
+export interface PlanningOptions { allowHorizonExtension?: boolean }
 export type Scenario = "A" | "B" | "C";
 export type Nature = "Live" | "Non-live (Consist)" | "Non-live (Others)";
 export type AccessType = "PM" | "PC" | "C";

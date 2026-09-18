@@ -1,6 +1,6 @@
 import { day, weekEnd, weekOf } from "./instance";
 import { footprint, legalMix } from "./topology";
-import type { Instance, Scenario, Placement, Occupancy, Result, Report, Violation, Footprint } from "./types";
+import type { Instance, Scenario, Placement, Occupancy, Result, Report, Violation, Footprint, PlanningOptions } from "./types";
 
 export function completionResults(instance: Instance, scenario: Scenario, access: Placement[]): Result[] {
   return instance.contracts.map((contract) => {
@@ -10,7 +10,7 @@ export function completionResults(instance: Instance, scenario: Scenario, access
     return { scenario, contract_number: contract.contract_number, simulated_completion_date: completion, overrun_days: Math.max(0, day(completion) - day(contract.planned_completion_date)) };
   });
 }
-export function checkSchedule(instance: Instance, scenario: Scenario, access: Placement[], occupancy: Occupancy[], results?: Result[]): Report {
+export function checkSchedule(instance: Instance, scenario: Scenario, access: Placement[], occupancy: Occupancy[], results?: Result[], options: PlanningOptions = {}): Report {
   const hard: Violation[] = [];
   const fail = (rule: string, detail: string) => hard.push({ rule, severity: "hard", detail });
   const activities = new Map(instance.activities.map((a) => [a.activity_id, a]));
@@ -24,6 +24,7 @@ export function checkSchedule(instance: Instance, scenario: Scenario, access: Pl
     const activity = activities.get(p.activity_id);
     if (!activity) { fail("schema", `Unknown activity ${p.activity_id}`); continue; }
     if (!Number.isInteger(p.week) || p.week < 1 || p.week > 20000 || ![0, 1].includes(p.eclo) || !Number.isInteger(p.access_night) || p.access_night < 1 || !Number.isInteger(p.access_seq) || p.access_seq < 1) { fail("schema", `Invalid access values for ${p.activity_id}`); continue; }
+    if (!options.allowHorizonExtension && p.week > instance.horizon_weeks) fail("horizon", `${p.activity_id}, wk${p.week}: outside declared ${instance.horizon_weeks}-week horizon`);
     const key = `${p.activity_id}|${p.week}`;
     if (seen.has(key)) fail("duplicate", `${key}: at most one access per activity-week`);
     seen.add(key);

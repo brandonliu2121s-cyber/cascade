@@ -19,7 +19,7 @@ After sign-in, open **PS1 Planner** (`/app/ps1`). Load the bundled official publ
 - Contract/type weekly access accounting, workfront caps, strict predecessor weeks, planned starts, PM/PC/C possession groups, and co-sharing.
 - A forbids excess capacity and ECLO; B holds planned dates and prices extra capacity/ECLO; C permits one excess possession per location-week and a continuous two-week ECLO window per affected line.
 - Multiple deterministic heuristic passes select the best locally feasible result found. No global optimum or feasibility on every hidden instance is promised. A failed B search retains scheduled workloads and reports deadline violations rather than claiming the instance is mathematically impossible.
-- The published supply is flat by location; A/C may extend the nominal horizon using that same supply to finish work, with an explicit warning. Supply CSVs with week-specific quotas are not supported by the published schema.
+  - The published supply is flat by location. Planning stays inside `horizon_weeks` by default; the UI's explicit horizon-extension option assumes that supply continues beyond the declared period. Incomplete work is reported when a strict-horizon schedule cannot be found. Supply CSVs with week-specific quotas are not supported by the published schema.
 
 **Validation limitation:** this repository contains a local checker derived from the brief, not the organiser's validator. The public problem-statement repository does not distribute the validator. The local checker conservatively enforces the statement's "buffers never overlap" requirement; the organiser-declared feasible reference sample includes overlaps under that interpretation. For example, reference week 21 overlaps the buffers of A025 (PC Consist) and A074 (PC Live) at `SEC:ALP:S03_S04:EB`. Their access-night indices are local to different contracts and cannot be interpreted as distinct global nights. Confirm that ambiguity with the organisers, and run all exported CSVs through their validator before submission. Local scores should not be presented as official judging scores.
 
@@ -36,7 +36,9 @@ npm run ps1:export
 # Optional: npm run ps1:export -- path/to/instance path/to/output
 ```
 
-The CLI generates `submission/ps1/A`, `B`, and `C`, each with `SCHEDULE_ACCESS.csv`, `SCHEDULE_OCCUPANCY.csv`, `RESULTS.csv`, and a clearly labelled `LOCAL_REPORT.json`. The three CSVs are the submission; the JSON is supplementary local evidence.
+The CLI generates `submission/ps1/A`, `B`, and `C`, each with `SCHEDULE_ACCESS.csv`, `SCHEDULE_OCCUPANCY.csv`, `RESULTS.csv`, and a clearly labelled `LOCAL_REPORT.json`. The three CSVs are the submission; the JSON is supplementary local evidence. To explicitly explore an extended flat-supply horizon, run `npm run ps1:export -- --allow-horizon-extension` inside `backend`. The API accepts `options: { allowHorizonExtension: true }` on both solve and validate; omitted options enforce the declared horizon. This local policy is not a claim about the official validator's treatment of overruns beyond the horizon.
+
+The solver additionally protects downstream contract deadlines when ordering predecessors, uses activity priority within contract tiers, and tries lower-cost supply plans before selecting the best feasible candidate. Regression examples reduce B excess cost from 21 to 0, A delay cost from 9.1 to 7, and C cost from 21 to 7. These are targeted examples, not guarantees of global optimality or hidden-instance performance. See `docs/PS1-validation-notes.md` for unresolved safety semantics.
 
 To serve the built frontend and API together on a hosting provider with Node.js 24+, build both apps, set `SERVE_FRONTEND=1`, optionally set `PORT`, and run `npm start` inside `backend`. In PowerShell:
 

@@ -3,7 +3,7 @@ import { Navigate, NavLink, Outlet, useNavigate, useSearchParams } from "react-r
 import { StationDot } from "./transit";
 
 const NAV = [
-  { to: "/app/ps1", label: "PS1 Planner", color: "#009645", end: true },
+  { to: "/app/ps1", label: "Planner", color: "#009645", end: true },
   { to: "/app", label: "Dashboard", color: "#D42E12", end: true },
   { to: "/app/requests/new", label: "Intake", color: "#9900AA", end: false },
   { to: "/app/requests", label: "Requests", color: "#005EC4", end: true },

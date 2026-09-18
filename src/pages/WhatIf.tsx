@@ -1,190 +1,78 @@
-import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { FlaskConical, GitCompareArrows } from "lucide-react";
-import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { whatIf } from "../lib/api";
-import { SCHEDULE_DATE } from "../lib/mockData";
-import type { WhatIfInput, WhatIfResult } from "../lib/types";
-import { AnimatedNumber } from "../components/indicators";
+import { useRef, useState } from "react";
+import { parseCsv } from "../../backend/src/ps1/csv";
+import { usePlanning } from "../lib/planning-context";
+import { replaceInstanceRows } from "../lib/planning-session";
+import { solveInstance, type PlanningResponse, type Scenario, type Solution } from "../lib/ps1";
+import { PlanningEmpty, PlanningSummary } from "../components/PlanningViews";
 import { TrackDivider } from "../components/transit";
-import { Button, Card, CardContent, CardHeader, CardTitle } from "../components/ui";
+import { Button, Card, Input, Label, Select } from "../components/ui";
 
-function Toggle({
-  label,
-  hint,
-  active,
-  onChange,
-}: {
-  label: string;
-  hint: string;
-  active: boolean;
-  onChange: (v: boolean) => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={() => onChange(!active)}
-      className={`flex w-full items-center justify-between rounded-xl border p-4 text-left transition-all ${
-        active ? "border-ink bg-ink text-paper" : "border-ink/15 bg-white hover:border-ink/40"
-      }`}
-    >
-      <div>
-        <p className="text-sm font-semibold">{label}</p>
-        <p className={`text-xs ${active ? "text-paper/60" : "text-ink/50"}`}>{hint}</p>
-      </div>
-      <span
-        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${active ? "bg-line-green" : "bg-ink/15"}`}
-      >
-        <span
-          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${active ? "left-[22px]" : "left-0.5"}`}
-        />
-      </span>
-    </button>
-  );
+type Change = "supply" | "workfronts" | "workload";
+interface Preview {
+  files: Record<string, string>;
+  response: PlanningResponse;
+  baseline: PlanningResponse | null;
+  scenario: Scenario;
+  baseRevision: number;
+  description: string;
 }
-
-function StatsColumn({ title, color, data }: { title: string; color: string; data?: WhatIfResult["before"] }) {
-  return (
-    <Card className="flex-1">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.2em]">
-          <span className="h-2.5 w-2.5 rounded-full border-2" style={{ borderColor: color, backgroundColor: `${color}33` }} />
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {!data ? (
-          <p className="py-6 text-center text-sm text-ink/40">Run a simulation to compare.</p>
-        ) : (
-          <>
-            <div className="flex gap-6">
-              <div>
-                <p className="text-4xl font-black tabular text-line-green">
-                  <AnimatedNumber value={data.scheduled} />
-                </p>
-                <p className="font-mono text-[10px] uppercase tracking-wider text-ink/45">Scheduled</p>
-              </div>
-              <div>
-                <p className="text-4xl font-black tabular text-line-orange">
-                  <AnimatedNumber value={data.deferred} />
-                </p>
-                <p className="font-mono text-[10px] uppercase tracking-wider text-ink/45">Unplaced</p>
-              </div>
-            </div>
-            <p className="rounded-lg bg-ink/[0.04] px-3 py-2 text-xs text-ink/70">
-              Bottleneck: <span className="font-semibold text-ink">{data.bottleneck}</span>
-            </p>
-          </>
-        )}
-      </CardContent>
-    </Card>
-  );
+function Comparison({ before, after }: { before?: Solution; after?: Solution }) {
+  const metrics = (solution?: Solution) => solution ? [solution.report.feasible ? "Feasible" : "Infeasible", `${solution.report.detail.workload_delivered} / ${solution.report.detail.workload_required}`, `${solution.report.detail.completed_activities} / ${solution.report.detail.total_activities}`, solution.report.detail.nights_scheduled, solution.report.soft_scores.overrun_days_total, solution.report.soft_scores.contracts_overrunning, solution.report.detail.horizon_weeks_used] : [];
+  const baseline = metrics(before); const preview = metrics(after);
+  return <Card className="overflow-x-auto p-5"><h2 className="mb-3 font-semibold">Scenario comparison</h2><table className="w-full text-left text-sm"><thead><tr><th className="p-2">Metric</th><th className="p-2">Baseline</th><th className="p-2">Preview</th></tr></thead><tbody>{["Checker result", "Workload delivered / required", "Activities completed / total", "Access nights scheduled", "Total overrun days", "Contracts overrunning", "Horizon weeks used"].map((label, index) => <tr className="border-t border-ink/10" key={label}><th className="p-2 font-medium">{label}</th><td className="p-2">{baseline[index] ?? "Not generated"}</td><td className="p-2">{preview[index] ?? "Not generated"}</td></tr>)}</tbody></table></Card>;
 }
 
 export default function WhatIf() {
-  const [engineer, setEngineer] = useState(false);
-  const [workTrain, setWorkTrain] = useState(false);
-  const [window30, setWindow30] = useState(false);
-  const [result, setResult] = useState<WhatIfResult | null>(null);
-
-  const mutation = useMutation({
-    mutationFn: (input: WhatIfInput) => whatIf(input),
-    onSuccess: setResult,
-  });
-
-  const simulate = () =>
-    mutation.mutate({
-      add_crews: engineer ? 1 : 0,
-      add_equipment: workTrain ? ["work_train"] : [],
-      extra_window_minutes: window30 ? 30 : 0,
-      date: SCHEDULE_DATE,
-    });
-
-  const chartData = result
-    ? [
-        { name: "Before", scheduled: result.before.scheduled, unplaced: result.before.deferred },
-        { name: "After", scheduled: result.after.scheduled, unplaced: result.after.deferred },
-      ]
-    : [];
-
-  return (
-    <div className="animate-fade-up py-10">
-      <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.25em] text-ink/50">Simulation</p>
-      <h1 className="mt-3 text-4xl font-black tracking-tight">What-if simulator</h1>
-      <TrackDivider color="#FA9E0D" stations={3} className="mt-6 max-w-xs" />
-
-      <div className="mt-8 grid gap-6 lg:grid-cols-3">
-        <div className="space-y-3">
-          <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-ink/50">Add resources</p>
-          <Toggle
-            label="+1 Signalling Engineer"
-            hint="Extra crew, 00:00–04:00"
-            active={engineer}
-            onChange={setEngineer}
-          />
-          <Toggle
-            label="+1 Work Train"
-            hint="Second unit allows parallel jobs"
-            active={workTrain}
-            onChange={setWorkTrain}
-          />
-          <Toggle
-            label="+30 min engineering window"
-            hint="All crews stay 30 min longer"
-            active={window30}
-            onChange={setWindow30}
-          />
-          <Button size="lg" className="w-full" onClick={simulate} disabled={mutation.isPending || (!engineer && !workTrain && !window30)}>
-            <FlaskConical className="h-4 w-4" />
-            {mutation.isPending ? "Simulating…" : "Simulate"}
-          </Button>
-        </div>
-
-        <div className="lg:col-span-2">
-          <div className="flex flex-col gap-4 sm:flex-row">
-            <StatsColumn title="Before" color="#6B7280" data={result?.before} />
-            <StatsColumn title="After" color="#009645" data={result?.after} />
-          </div>
-
-          {result && (
-            <Card className="mt-4">
-              <CardContent className="p-5">
-                <div className="flex items-start gap-3">
-                  <GitCompareArrows className="mt-0.5 h-4 w-4 shrink-0 text-ink/50" />
-                  <p className="text-sm font-medium leading-relaxed">{result.impact}</p>
-                </div>
-                <div className="mt-4 h-44">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData} barSize={40}>
-                      <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#11111199" }} axisLine={false} tickLine={false} />
-                      <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#11111199" }} axisLine={false} tickLine={false} width={24} />
-                      <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #11111120", fontSize: 12 }} />
-                      <Bar dataKey="scheduled" name="Scheduled" stackId="a" radius={[0, 0, 0, 0]}>
-                        {chartData.map((_, i) => (
-                          <Cell key={i} fill="#009645" />
-                        ))}
-                      </Bar>
-                      <Bar dataKey="unplaced" name="Unplaced" stackId="a" radius={[8, 8, 0, 0]}>
-                        {chartData.map((_, i) => (
-                          <Cell key={i} fill="#D97706" />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="flex gap-4 text-xs text-ink/60">
-                  <span className="flex items-center gap-1.5">
-                    <span className="h-2 w-2 rounded-full bg-line-green" /> Scheduled
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <span className="h-2 w-2 rounded-full bg-[#D97706]" /> Unplaced
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+  const { files, instance, response, options, revision, selected, stale, busy, applyPreview } = usePlanning();
+  const [change, setChange] = useState<Change>("supply");
+  const [target, setTarget] = useState("");
+  const [value, setValue] = useState<string | null>(null);
+  const [preview, setPreview] = useState<Preview | null>(null);
+  const [working, setWorking] = useState(false);
+  const [error, setError] = useState("");
+  const requestId = useRef(0);
+  const targets = instance ? change === "supply" ? instance.supplies.map((row) => ({ id: row.location_id, value: row.supply_capacity })) : change === "workfronts" ? instance.contracts.map((row) => ({ id: row.contract_number, value: row.number_of_workfronts })) : instance.activities.map((row) => ({ id: row.activity_id, value: row.total_accesses })) : [];
+  const current = targets.find((row) => row.id === target) ?? targets[0];
+  const entered = value === null ? String(current?.value ?? "") : value;
+  function invalidate() { requestId.current += 1; setPreview(null); setError(""); }
+  async function simulate() {
+    if (!instance || !current || working || busy) return;
+    const id = ++requestId.current;
+    setWorking(true); setError(""); setPreview(null);
+    try {
+      const amount = Number(entered);
+      const maximum = change === "supply" ? 1000 : change === "workfronts" ? 100 : 1000;
+      const minimum = change === "supply" ? 0 : 1;
+      if (!entered.trim() || !Number.isInteger(amount) || amount < minimum || amount > maximum) throw new Error(`Enter a whole number from ${minimum} to ${maximum}.`);
+      const changedFiles = change === "supply" ? replaceInstanceRows(files, "04_LOCATION_SUPPLY.csv", parseCsv(files["04_LOCATION_SUPPLY.csv"]).map((row) => row.location_id === current.id ? { ...row, supply_capacity: amount } : row)) : change === "workfronts" ? replaceInstanceRows(files, "07_PROJECT_DETAILS.csv", parseCsv(files["07_PROJECT_DETAILS.csv"]).map((row) => row.contract_number === current.id ? { ...row, number_of_workfronts: amount } : row)) : replaceInstanceRows(files, "08_ACTIVITY_DETAILS.csv", parseCsv(files["08_ACTIVITY_DETAILS.csv"]).map((row) => row.activity_id === current.id ? { ...row, total_accesses: amount } : row));
+      const baseRevision = revision;
+      const baseline = stale ? null : response;
+      const scenario = selected;
+      const result = await solveInstance(changedFiles, { ...options });
+      if (id === requestId.current) setPreview({ files: changedFiles, response: result, baseline, scenario, baseRevision, description: `${current.id}: ${change === "supply" ? "supply capacity" : change === "workfronts" ? "workfronts" : "total accesses"} ${current.value} → ${amount}` });
+    } catch (failure) { if (id === requestId.current) setError(failure instanceof Error ? failure.message : "Preview failed."); }
+    finally { setWorking(false); }
+  }
+  function apply() {
+    if (!preview || preview.baseRevision !== revision || busy || working) return;
+    try { applyPreview(preview.files, preview.response, preview.baseRevision); setPreview(null); setError(""); }
+    catch (failure) { setError(failure instanceof Error ? failure.message : "Unable to apply preview."); }
+  }
+  const outdated = preview !== null && preview.baseRevision !== revision;
+  const before = preview?.baseline?.solutions.find((row) => row.scenario === preview.scenario);
+  const after = preview?.response.solutions.find((row) => row.scenario === preview.scenario);
+  return <div className="animate-fade-up space-y-6 py-10"><div><p className="font-mono text-[11px] font-semibold uppercase tracking-[0.25em] text-ink/50">Simulation</p><h1 className="mt-3 text-4xl font-black tracking-tight">What-if simulator</h1><TrackDivider color="#FA9E0D" stations={3} className="mt-6 max-w-xs" /></div><PlanningSummary />
+    {!instance ? <PlanningEmpty /> : <>
+      <Card className="space-y-4 p-5"><h2 className="font-semibold">Preview an input change</h2><p className="text-sm text-ink/60">Compare a PS1 input change with the current schedule. Applying the preview updates the shared inputs and generated results.</p>
+        <form className="grid gap-4 sm:grid-cols-3" onSubmit={(event) => { event.preventDefault(); void simulate(); }}>
+          <div className="space-y-2"><Label htmlFor="whatif-change">Change</Label><Select id="whatif-change" value={change} disabled={working || busy} onChange={(event) => { invalidate(); setChange(event.target.value as Change); setTarget(""); setValue(null); }}><option value="supply">Location supply capacity</option><option value="workfronts">Contract workfronts</option><option value="workload">Activity workload</option></Select></div>
+          <div className="space-y-2"><Label htmlFor="whatif-target">{change === "supply" ? "Location" : change === "workfronts" ? "Contract" : "Activity"}</Label><Select id="whatif-target" value={current?.id ?? ""} disabled={working || busy} onChange={(event) => { invalidate(); setTarget(event.target.value); setValue(null); }}>{targets.map((row) => <option value={row.id} key={row.id}>{row.id} · current {row.value}</option>)}</Select></div>
+          <div className="space-y-2"><Label htmlFor="whatif-value">{change === "supply" ? "Capacity per week" : change === "workfronts" ? "Workfronts" : "Total accesses"}</Label><Input id="whatif-value" type="number" min={change === "supply" ? 0 : 1} max={change === "supply" ? 1000 : change === "workfronts" ? 100 : 1000} step={1} required disabled={working || busy} value={entered} onChange={(event) => { invalidate(); setValue(event.target.value); }} /></div>
+          <Button type="submit" disabled={working || busy || !current}>{working ? "Generating preview…" : "Generate preview"}</Button>
+        </form>
+        {error && <p role="alert" className="text-sm text-line-red">{error}</p>}
+      </Card>
+      {preview && <><Card className="space-y-3 p-5"><h2 className="font-semibold">Preview · scenario {preview.scenario}</h2><p className="text-sm">{preview.description}</p>{outdated && <p role="status" className="text-sm text-line-red">Shared inputs changed since this preview. Generate a new preview before applying.</p>}{!preview.baseline && <p className="text-sm text-ink/60">Generate a current baseline schedule to compare both sets of metrics.</p>}<Button onClick={apply} disabled={outdated || busy || working}>Apply preview</Button></Card><Comparison before={before} after={after} />{after && <Card className="space-y-2 p-5"><h2 className="font-semibold">Preview checker details</h2>{after.report.hard_violations.length ? after.report.hard_violations.map((row, index) => <p key={index} className="text-sm text-line-red">{row.rule}: {row.detail}</p>) : <p className="text-sm text-ink/60">No hard violations reported by the local checker.</p>}{after.warnings.map((warning, index) => <p key={index} className="text-sm text-ink/60">{warning}</p>)}</Card>}</>}
+    </>}
+  </div>;
 }

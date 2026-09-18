@@ -1,47 +1,27 @@
 import { useState } from "react";
-import { CalendarDays, Download, Play, Upload, CheckCircle2, AlertTriangle } from "lucide-react";
+import { CalendarDays, Play, Upload, CheckCircle2, AlertTriangle } from "lucide-react";
 import { Button, Card, CardHeader, CardTitle, CardContent, Input } from "../components/ui";
-import { PS1_FILES, loadPublicInstance, solveInstance, validateSubmission, downloadFile } from "../lib/ps1";
-import type { PlanningResponse, Scenario, Report } from "../lib/ps1";
+import { PS1_FILES } from "../lib/ps1";
+import { usePlanning } from "../lib/planning-context";
+import { PlanningSummary, ResultExports } from "../components/PlanningViews";
 import { TrackDivider } from "../components/transit";
 
 const POLICIES = { A: "Fixed supply · flexible completion", B: "Fixed completion · flexible supply", C: "Balanced supply and completion" };
 const MESSAGE = "Local checks implement the published PS1 brief. Official validator verification is still required.";
-function loadSaved(): Record<string, string> {
-  try { const saved: unknown = JSON.parse(sessionStorage.getItem("cascade.ps1.files") || "{}"); return saved && typeof saved === "object" ? Object.fromEntries(Object.entries(saved).filter(([key, value]) => PS1_FILES.includes(key) && typeof value === "string")) : {}; } catch { return {}; }
-}
 export default function PS1Planner() {
-  const [files, setFiles] = useState<Record<string, string>>(loadSaved);
-  const [data, setData] = useState<PlanningResponse | null>(null);
-  const [selected, setSelected] = useState<Scenario>("A");
-  const [busy, setBusy] = useState(false); const [error, setError] = useState("");
-  const [filter, setFilter] = useState(""); const [validation, setValidation] = useState<Report | null>(null);
+  const { files, options, response: data, selected, setSelected, busy, solution, replaceFiles: store, run, loadPublic: sample, uploadFiles, setOptions } = usePlanning();
+  const [filter, setFilter] = useState("");
+  const allowHorizonExtension = Boolean(options.allowHorizonExtension);
   const missing = PS1_FILES.filter((name) => !(name in files));
-  const solution = data?.solutions.find((s) => s.scenario === selected);
-  const store = (next: Record<string, string>) => { setFiles(next); setData(null); setValidation(null); try { sessionStorage.setItem("cascade.ps1.files", JSON.stringify(next)); } catch { /* In-memory planning still works if browser storage is full. */ } };
-  async function upload(list: FileList | null) {
-    if (!list) return;
-    setBusy(true); setError("");
-    try {
-      const uploaded = Array.from(list);
-      if (uploaded.some((f) => !PS1_FILES.includes(f.name))) throw new Error("Select only the eight official instance CSV files shown below.");
-      if (uploaded.some((f) => f.size > 2_000_000)) throw new Error("Each CSV file must be smaller than 2 MB.");
-      if (new Set(uploaded.map((f) => f.name)).size !== uploaded.length) throw new Error("Select only one file for each required filename.");
-      store({ ...files, ...Object.fromEntries(await Promise.all(uploaded.map(async (f) => [f.name, await f.text()]))) });
-    } catch (err) { setError(err instanceof Error ? err.message : "Unable to read files"); }
-    finally { setBusy(false); }
-  }
-  async function sample() { setBusy(true); setError(""); try { store((await loadPublicInstance()).files); } catch (err) { setError(err instanceof Error ? err.message : "Unable to load data"); } finally { setBusy(false); } }
-  async function run() { setBusy(true); setError(""); setValidation(null); try { setData(await solveInstance(files)); } catch (err) { setData(null); setError(err instanceof Error ? err.message : "Unable to schedule"); } finally { setBusy(false); } }
-  async function recheck() { if (!solution) return; setBusy(true); setError(""); try { setValidation(await validateSubmission(files, selected, solution.csv)); } catch (err) { setError(err instanceof Error ? err.message : "Unable to check exports"); } finally { setBusy(false); } }
+  const upload = (list: FileList | null) => uploadFiles(Array.from(list ?? []));
   const visibleJobs = data?.instance.activities.filter((a) => `${a.activity_id} ${a.contract_number} ${a.start_location_id} ${a.end_location_id}`.toLowerCase().includes(filter.toLowerCase())) ?? [];
   const weeks = solution ? Math.max(data!.instance.horizon_weeks, solution.report.detail.horizon_weeks_used) : 0;
   return <div className="animate-fade-up py-10">
     <div className="flex flex-wrap items-end justify-between gap-4">
-      <div><p className="font-mono text-[11px] font-semibold uppercase tracking-[0.25em] text-ink/50">PS1 · Track access planning</p><h1 className="mt-3 text-4xl font-black tracking-tight">Possession planner</h1><p className="mt-3 max-w-xl text-sm text-ink/60">Allocate complete activity workloads across Alpha and Beta, compare three policies, and export the submission files.</p></div>
+      <div><p className="font-mono text-[11px] font-semibold uppercase tracking-[0.25em] text-ink/50">Track access planning</p><h1 className="mt-3 text-4xl font-black tracking-tight">Possession planner</h1><p className="mt-3 max-w-xl text-sm text-ink/60">Allocate complete activity workloads across Alpha and Beta, compare three policies, and export the submission files.</p></div>
       <Button onClick={run} disabled={busy || missing.length > 0}><Play className="h-4 w-4" />{busy ? "Working…" : "Run scenarios A, B & C"}</Button>
     </div><TrackDivider color="#009645" stations={4} className="mt-6 max-w-xs" />
-    {error && <div role="alert" className="mt-6 rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800">{error}</div>}
+    <PlanningSummary />
     <Card className="mt-6"><CardHeader><CardTitle>1. Load an instance</CardTitle></CardHeader><CardContent>
       <div className="flex flex-wrap items-center gap-3">
         <label className={`inline-flex cursor-pointer items-center gap-2 rounded-lg border border-ink/20 px-4 py-2 text-sm font-semibold focus-within:ring-2 focus-within:ring-line-green ${busy ? "pointer-events-none opacity-50" : ""}`}><Upload className="h-4 w-4" />Upload instance CSVs<input aria-label="Upload instance CSVs" type="file" accept=".csv" multiple disabled={busy} className="sr-only" onChange={(e) => { void upload(e.target.files); e.target.value = ""; }} /></label>
@@ -50,12 +30,13 @@ export default function PS1Planner() {
         <span className="text-xs text-ink/60">{8 - missing.length}/8 files loaded</span>
       </div>
       <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{PS1_FILES.map((name) => <div key={name} className={`flex items-center gap-2 rounded-lg border p-2 font-mono text-[10px] ${name in files ? "border-line-green/30 bg-line-green/5" : "border-ink/10 text-ink/45"}`}>{name in files ? <CheckCircle2 className="h-3 w-3 shrink-0 text-line-green" /> : <Upload className="h-3 w-3 shrink-0" />}{name}</div>)}</div>
+      <label className="mt-4 flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1" checked={allowHorizonExtension} disabled={busy} onChange={(e) => setOptions({ allowHorizonExtension: e.target.checked })} /><span>Allow planning beyond the declared horizon using flat weekly supply<span className="block text-xs text-ink/60">This assumes the same supply continues after the official planning period.</span></span></label>
       <p className="mt-3 text-xs text-ink/50">Files stay in this browser session. Each solve uses your uploaded instance independently.</p>
     </CardContent></Card>
     {!data && <div className="mt-8 rounded-xl border border-dashed border-ink/20 p-8 text-center text-sm text-ink/50">Load all eight CSVs, then run the scenarios to see the multiweek plan.</div>}
     {data && solution && <>
       <div className="mt-8 flex items-center gap-2 text-sm"><CalendarDays className="h-4 w-4" /><span>{data.instance.horizon_start} · {data.instance.horizon_weeks} planning weeks · {data.instance.contracts.length} contracts · {data.instance.activities.length} activities</span></div>
-      <div className="mt-4 grid gap-3 md:grid-cols-3" aria-label="Scenario comparison">{data.solutions.map((s) => <button key={s.scenario} aria-pressed={selected === s.scenario} onClick={() => { setSelected(s.scenario); setValidation(null); }} className={`rounded-xl border p-4 text-left transition-colors focus-visible:ring-2 focus-visible:ring-line-green ${selected === s.scenario ? "border-line-green bg-line-green/5" : "border-ink/15 hover:bg-ink/5"}`}>
+      <div className="mt-4 grid gap-3 md:grid-cols-3" aria-label="Scenario comparison">{data.solutions.map((s) => <button key={s.scenario} aria-pressed={selected === s.scenario} disabled={busy} onClick={() => setSelected(s.scenario)} className={`rounded-xl border p-4 text-left transition-colors focus-visible:ring-2 focus-visible:ring-line-green ${selected === s.scenario ? "border-line-green bg-line-green/5" : "border-ink/15 hover:bg-ink/5"}`}>
         <span className="font-mono text-xs font-bold">Scenario {s.scenario}</span><p className="mt-1 text-sm font-semibold">{POLICIES[s.scenario]}</p>
         <p className={`mt-3 text-xs ${s.report.feasible ? "text-line-green" : "text-red-700"}`}>{s.report.feasible ? "Local checks passed" : `${s.report.hard_violations.length} hard violations`}</p>
         <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-ink/60"><span>Penalty: {s.report.soft_scores.objective_score ?? "Not scored"}</span><span>Overrun: {s.report.soft_scores.overrun_days_total} days</span><span>Extra supply: {s.report.soft_scores.excess_access_nights_total}</span><span>ECLO: {s.report.soft_scores.eclo_nights_total}</span></div>
@@ -71,7 +52,7 @@ export default function PS1Planner() {
         {visibleJobs.length === 0 && <p className="mt-3 text-sm text-ink/50">No activities match your filter.</p>}
       </CardContent></Card>
       <Card className="mt-6"><CardHeader><CardTitle>Contract completion</CardTitle></CardHeader><CardContent><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="text-xs text-ink/50"><tr>{["Contract", "Priority", "Planned completion", "Scheduled completion", "Overrun"].map((h) => <th key={h} className="whitespace-nowrap pb-3 pr-4">{h}</th>)}</tr></thead><tbody>{solution.results.map((r) => { const c = data.instance.contracts.find((c) => c.contract_number === r.contract_number)!; return <tr key={r.contract_number} className="border-t border-ink/10"><td className="py-2 font-mono">{r.contract_number}</td><td>P{c.contract_priority}</td><td>{c.planned_completion_date}</td><td>{r.simulated_completion_date}</td><td className={r.overrun_days ? "font-semibold text-amber-700" : "text-line-green"}>{r.overrun_days} days</td></tr>; })}</tbody></table></div></CardContent></Card>
-      <Card className="mt-6"><CardHeader><CardTitle>3. Check and export scenario {selected}</CardTitle></CardHeader><CardContent><div className="flex flex-wrap gap-3"><Button variant="outline" disabled={busy} onClick={recheck}>Recheck exported CSVs</Button>{Object.entries(solution.csv).map(([name, content]) => <Button key={name} variant="outline" disabled={!solution.report.feasible} onClick={() => downloadFile(name, content)}><Download className="h-4 w-4" />{name}</Button>)}<Button variant="ghost" onClick={() => downloadFile(`SCENARIO_${selected}_LOCAL_REPORT.json`, JSON.stringify(solution.report, null, 2), "application/json")}>Download report</Button></div>{validation && <p role="status" className="mt-3 text-sm">Export recheck: {validation.feasible ? "local checks passed" : `${validation.hard_violations.length} hard violations`}. {MESSAGE}</p>}<p className="mt-3 text-xs text-ink/50">Keep each scenario’s three CSVs in its own folder. Invalid schedules cannot be downloaded as submissions.</p></CardContent></Card>
+      <ResultExports />
     </>}
   </div>;
 }

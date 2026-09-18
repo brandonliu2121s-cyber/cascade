@@ -11,8 +11,9 @@ import type { Occupancy, Placement, Result, Scenario } from "../ps1/types";
 const router = Router();
 const filesSchema = z.record(z.string(), z.string().max(2_000_000));
 const scenarioSchema = z.enum(["A", "B", "C"]);
-const solveSchema = z.object({ files: filesSchema, scenario: scenarioSchema.optional() }).strict();
-const validateSchema = z.object({ files: filesSchema, scenario: scenarioSchema, submission: filesSchema }).strict();
+const optionsSchema = z.object({ allowHorizonExtension: z.boolean().optional() }).strict();
+const solveSchema = z.object({ files: filesSchema, scenario: scenarioSchema.optional(), options: optionsSchema.optional() }).strict();
+const validateSchema = z.object({ files: filesSchema, scenario: scenarioSchema, submission: filesSchema, options: optionsSchema.optional() }).strict();
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : "Invalid input";
 router.get("/sample", (_req, res) => {
   try {
@@ -25,7 +26,7 @@ router.post("/solve", (req, res) => {
     const input = solveSchema.parse(req.body);
     const instance = parseInstance(input.files);
     const scenarios: Scenario[] = input.scenario ? [input.scenario] : ["A", "B", "C"];
-    res.json({ instance, solutions: scenarios.map((s) => solve(instance, s)) });
+    res.json({ instance, solutions: scenarios.map((s) => solve(instance, s, input.options)) });
   } catch (error) { res.status(400).json({ error: errorMessage(error) }); }
 });
 router.post("/validate", (req, res) => {
@@ -44,7 +45,7 @@ router.post("/validate", (req, res) => {
     const access: Placement[] = rows("SCHEDULE_ACCESS.csv", ["activity_id", "access_seq", "week", "eclo", "access_night"]).map((r) => ({ activity_id: r.activity_id, access_seq: number(r.access_seq), week: number(r.week), eclo: number(r.eclo) as 0 | 1, access_night: number(r.access_night) }));
     const occupancy: Occupancy[] = rows("SCHEDULE_OCCUPANCY.csv", ["activity_id", "week", "location_id", "co_share_group"]).map((r) => ({ activity_id: r.activity_id, week: number(r.week), location_id: r.location_id, co_share_group: r.co_share_group }));
     const results: Result[] = rows("RESULTS.csv", ["scenario", "contract_number", "simulated_completion_date", "overrun_days"]).map((r) => ({ scenario: r.scenario as Scenario, contract_number: r.contract_number, simulated_completion_date: dateValue(r.simulated_completion_date), overrun_days: number(r.overrun_days) }));
-    res.json(checkSchedule(instance, input.scenario, access, occupancy, results));
+    res.json(checkSchedule(instance, input.scenario, access, occupancy, results, input.options));
   } catch (error) { res.status(400).json({ error: errorMessage(error) }); }
 });
 export default router;

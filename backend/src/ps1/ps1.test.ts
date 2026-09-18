@@ -63,7 +63,7 @@ describe("independent schedule checker", () => {
     return placements.flatMap((p) => footprint(instance, instance.activities.find((a) => a.activity_id === p.activity_id)!).work.map((location_id) => ({ activity_id: p.activity_id, week: p.week, location_id, co_share_group: group(p.activity_id) })));
   }
   it("accumulates raw activity overruns in the contract priority tier", () => {
-    const instance = tiny(); instance.activities[0].total_accesses = 1;
+    const instance = tiny(); instance.horizon_weeks = 3; instance.activities[0].total_accesses = 1;
     instance.contracts[0].planned_completion_date = "2027-01-10";
     instance.activities.push({ ...instance.activities[0], activity_id: "A2" });
     const placements = [{ ...placement("A1", 2), access_seq: 1 }, { ...placement("A2", 3), access_seq: 1 }];
@@ -107,7 +107,7 @@ describe("independent schedule checker", () => {
     expect(checkSchedule(instance, "A", placements, occupancyFor(instance, placements)).hard_violations.some((v) => v.rule === "closure")).toBe(true);
   });
   it("enforces C ECLO windows on both affected lines, while B is exempt", () => {
-    const instance = tiny(); instance.contracts[0].nature_of_activity = "Live";
+    const instance = tiny(); instance.horizon_weeks = 3; instance.contracts[0].nature_of_activity = "Live";
     instance.contracts[0].planned_completion_date = "2027-02-28";
     instance.activities[0].total_accesses = 3;
     instance.activities[0].start_location_id = instance.activities[0].end_location_id = "SEC:ALP:H01_H02:EB";
@@ -140,9 +140,36 @@ describe("independent schedule checker", () => {
   });
 });
 
+describe("planning horizon policy", () => {
+  it("rejects valid out-of-horizon access unless extension is explicit", () => {
+    const instance = tiny(); instance.activities[0].total_accesses = 1;
+    const access = [{ ...placement("A1", 3), access_seq: 1 }];
+    const occupancy = footprint(instance, instance.activities[0]).work.map((location_id) => ({ activity_id: "A1", week: 3, location_id, co_share_group: "b1" }));
+    expect(checkSchedule(instance, "A", access, occupancy).hard_violations.map((v) => v.rule)).toContain("horizon");
+    expect(checkSchedule(instance, "A", access, occupancy, undefined, { allowHorizonExtension: true }).feasible).toBe(true);
+  });
+  it("retains incomplete workload diagnostics at the strict horizon", () => {
+    const instance = tiny(); instance.activities[0].total_accesses = 4;
+    const strict = solve(instance, "A");
+    expect(strict.access.map((p) => p.week)).toEqual([1, 2]);
+    expect(strict.report.feasible).toBe(false);
+    expect(strict.report.detail.workload_delivered).toBe(2);
+    expect(strict.report.hard_violations.map((v) => v.rule)).toContain("workload");
+    const extended = solve(instance, "A", { allowHorizonExtension: true });
+    expect(extended.report.feasible).toBe(true);
+    expect(extended.report.detail.horizon_weeks_used).toBe(4);
+    expect(extended.warnings.join(" ")).toMatch(/flat weekly supply/);
+  });
+  it("does not schedule a planned start beyond the strict horizon", () => {
+    const instance = tiny(); instance.activities[0].planned_start_date = "2027-01-18";
+    expect(solve(instance, "A").access).toEqual([]);
+    expect(solve(instance, "A", { allowHorizonExtension: true }).report.feasible).toBe(true);
+  });
+});
+
 describe("scenario solver", () => {
   it("prices additional possession slots in B and limits C elasticity", () => {
-    const instance = tiny(); instance.activities[0].total_accesses = 1;
+    const instance = tiny(); instance.horizon_weeks = 3; instance.activities[0].total_accesses = 1;
     instance.contracts[0].access_type = "PM"; instance.contracts[0].planned_completion_date = "2027-01-10";
     for (let i = 2; i <= 5; i++) {
       instance.contracts.push({ ...instance.contracts[0], contract_number: `C${i}` });
@@ -161,6 +188,7 @@ describe("scenario solver", () => {
   it("finishes predecessors before scheduling dependent activities", () => {
     const instance = tiny();
     instance.activities.push({ ...instance.activities[0], activity_id: "A2", total_accesses: 1, predecessor_activity_id: "A1" });
+    instance.horizon_weeks = 3;
     const result = solve(instance, "A");
     expect(result.report.feasible).toBe(true);
     expect(result.access.find((p) => p.activity_id === "A2")!.week).toBe(3);
@@ -181,10 +209,10 @@ describe("scenario solver", () => {
     expect(result.csv["RESULTS.csv"].split(/\r?\n/)[0]).toBe("scenario,contract_number,simulated_completion_date,overrun_days");
     expect(result.results[0].simulated_completion_date).toBe("2027-01-17");
   });
-  it("keeps congested work and extends A instead of dropping jobs", () => {
+  it("keeps congested work when A extension is explicitly enabled", () => {
     const instance = tiny();
     instance.activities.push({ ...instance.activities[0], activity_id: "A2" });
-    const result = solve(instance, "A");
+    const result = solve(instance, "A", { allowHorizonExtension: true });
     expect(result.report.feasible).toBe(true);
     expect(result.access).toHaveLength(4);
     expect(Math.max(...result.access.map((p) => p.week))).toBe(4);
@@ -213,7 +241,7 @@ describe("scenario solver", () => {
     const instance = tiny();
     instance.activities[0].total_accesses = 4;
     instance.contracts[0].planned_completion_date = "2027-01-10";
-    const result = solve(instance, "B");
+    const result = solve(instance, "B", { allowHorizonExtension: true });
     expect(result.report.feasible).toBe(false);
     expect(result.report.hard_violations.some((v) => v.rule === "planned_date")).toBe(true);
     expect(result.access.reduce((n, p) => n + (p.eclo ? 1.5 : 1), 0)).toBeGreaterThanOrEqual(4);
