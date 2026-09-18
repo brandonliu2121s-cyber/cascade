@@ -25,3 +25,4 @@ backend/*.db*
 *.njsproj
 *.sln
 *.sw?
+.cache/

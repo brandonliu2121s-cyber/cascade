@@ -1,0 +1,43 @@
+import { beforeAll, afterAll, describe, it, expect } from "vitest";
+import express from "express";
+import type { Server } from "node:http";
+import type { AddressInfo } from "node:net";
+import router from "../routes/ps1";
+let server: Server; let base: string;
+beforeAll(async () => {
+  const app = express(); app.use(express.json({ limit: "10mb" })); app.use("/api/ps1", router);
+  await new Promise<void>((resolve) => { server = app.listen(0, "127.0.0.1", resolve); });
+  base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api/ps1`;
+});
+afterAll(async () => { if (server) await new Promise<void>((resolve) => server.close(() => resolve())); });
+const post = (path: string, body: unknown) => fetch(base + path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+describe("PS1 API", () => {
+  it("rejects missing input files and invalid scenarios", async () => {
+    const missing = await post("/solve", { files: {} });
+    expect(missing.status).toBe(400); expect((await missing.json()).error).toMatch(/Missing/);
+    expect((await post("/solve", { files: {}, scenario: "D" })).status).toBe(400);
+  });
+  it("solves isolated uploads and independently validates exported CSVs", async () => {
+    const sample = await (await fetch(base + "/sample")).json();
+    expect(Object.keys(sample.files)).toHaveLength(8);
+    const response = await post("/solve", { files: sample.files });
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.instance.activities).toHaveLength(54);
+    expect(data.solutions.map((s: { scenario: string }) => s.scenario)).toEqual(["A", "B", "C"]);
+    for (const solution of data.solutions) {
+      expect(solution.report.feasible).toBe(true);
+      const validation = await post("/validate", { files: sample.files, scenario: solution.scenario, submission: solution.csv });
+      expect(validation.status).toBe(200);
+      expect((await validation.json()).feasible).toBe(true);
+    }
+    const corrupted = { ...data.solutions[0].csv, "SCHEDULE_ACCESS.csv": "activity_id,access_seq,week,eclo,access_night\n" };
+    const invalid = await post("/validate", { files: sample.files, scenario: "A", submission: corrupted });
+    expect((await invalid.json()).feasible).toBe(false);
+  }, 30000);
+  it("returns CSV parse errors instead of silently converting invalid numbers", async () => {
+    const sample = await (await fetch(base + "/sample")).json();
+    const response = await post("/validate", { files: sample.files, scenario: "A", submission: { "SCHEDULE_ACCESS.csv": "activity_id,access_seq,week,eclo,access_night\nA001,1,no,0,1", "SCHEDULE_OCCUPANCY.csv": "activity_id,week,location_id,co_share_group\n", "RESULTS.csv": "scenario,contract_number,simulated_completion_date,overrun_days\n" } });
+    expect(response.status).toBe(400);
+  });
+});
