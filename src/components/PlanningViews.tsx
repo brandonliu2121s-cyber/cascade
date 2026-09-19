@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Download } from "lucide-react";
 import { usePlanning } from "../lib/planning-context";
-import { downloadFile } from "../lib/ps1";
+import { downloadFile } from "../lib/planning-api";
 import { Button, Card, CardContent, CardHeader, CardTitle, Select } from "./ui";
 
 export function PlanningEmpty() {
@@ -23,7 +23,7 @@ export function ResultExports() {
     <div className="flex flex-wrap gap-3"><Button variant="outline" disabled={!solution || busy || stale} onClick={recheck}>Recheck exported CSVs</Button>
       {['SCHEDULE_ACCESS.csv', 'SCHEDULE_OCCUPANCY.csv', 'RESULTS.csv'].map((name) => <Button key={name} variant="outline" disabled={!solution?.report.feasible || busy || stale} onClick={() => { if (solution?.report.feasible && !stale) downloadFile(name, solution.csv[name]); }}><Download className="h-4 w-4" />{name}</Button>)}</div>
     {validation && <p role="status" className="mt-3 text-sm">Export recheck: {validation.feasible ? 'local checks passed' : `${validation.hard_violations.length} hard violations`}.</p>}
-    {Boolean(options.capacityChanges?.length) && <div className="mt-3 space-y-2"><p className="text-sm text-amber-800">Exploratory exports use the active capacity changes. The three output CSVs alone cannot reproduce this disrupted case in the official validator.</p><Button size="sm" variant="outline" disabled={!solution?.report.feasible || busy || stale} onClick={() => downloadFile('PLANNING_OPTIONS.json', JSON.stringify(options, null, 2), 'application/json')}>Download planning options</Button></div>}
-    <p className="mt-3 text-xs text-ink/50">These files contain the selected scenario shown throughout the app. Keep each scenario’s files in its own folder. Official validator verification is still required.</p>
+    {Boolean(options.capacityChanges?.length) && <div className="mt-3 space-y-2"><p className="text-sm text-amber-800">Exploratory exports use active capacity changes. Save the planning options with the three CSVs to reproduce this disrupted case.</p><Button size="sm" variant="outline" disabled={!solution?.report.feasible || busy || stale} onClick={() => downloadFile('PLANNING_OPTIONS.json', JSON.stringify(options, null, 2), 'application/json')}>Download planning options</Button></div>}
+    <p className="mt-3 text-xs text-ink/50">These files contain the selected scenario shown throughout the app. Keep each scenario’s files in its own folder.</p>
   </CardContent></Card>;
 }

@@ -17,6 +17,8 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route element={<PlanningProvider><Layout /></PlanningProvider>}>
         <Route path="/app" element={<Dashboard />} />
+        <Route path="/app/status" element={<RequestsList />} />
+        <Route path="/app/request" element={<RequestIntake />} />
         <Route path="/app/requests" element={<RequestsList />} />
         <Route path="/app/requests/new" element={<RequestIntake />} />
         <Route path="/app/schedule" element={<Navigate to="/app/planner" replace />} />
@@ -24,7 +26,6 @@ export default function App() {
         <Route path="/app/resources" element={<Navigate to="/app/planner" replace />} />
         <Route path="/app/map" element={<MaintenanceMap />} />
         <Route path="/app/planner" element={<Planner />} />
-        <Route path="/app/ps1" element={<Navigate to="/app/planner" replace />} />
       </Route>
     </Routes>
   );

@@ -2,16 +2,16 @@ import { beforeAll, afterAll, describe, it, expect } from "vitest";
 import express from "express";
 import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import router from "../routes/ps1";
+import router from "../routes/planning";
 let server: Server; let base: string;
 beforeAll(async () => {
-  const app = express(); app.use(express.json({ limit: "10mb" })); app.use("/api/ps1", router);
+  const app = express(); app.use(express.json({ limit: "10mb" })); app.use("/api/planning", router);
   await new Promise<void>((resolve) => { server = app.listen(0, "127.0.0.1", resolve); });
-  base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api/ps1`;
+  base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api/planning`;
 });
 afterAll(async () => { if (server) await new Promise<void>((resolve) => server.close(() => resolve())); });
 const post = (path: string, body: unknown) => fetch(base + path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-describe("PS1 API", () => {
+describe("Planning API", () => {
   it("rejects missing input files and invalid scenarios", async () => {
     const missing = await post("/solve", { files: {} });
     expect(missing.status).toBe(400); expect((await missing.json()).error).toMatch(/Missing/);

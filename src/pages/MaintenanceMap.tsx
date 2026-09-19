@@ -41,7 +41,7 @@ export default function MaintenanceMapPage() {
         <p>Load a planning instance to see where maintenance is planned.</p>
         <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
           <Button variant="outline" disabled={busy} onClick={loadPublic}>Use official public dataset</Button>
-          <Link className="font-semibold underline" to="/app/ps1">Upload your own CSVs in the PS1 Planner</Link>
+          <Link className="font-semibold underline" to="/app/planner">Upload your own CSVs in Planner</Link>
         </div>
       </div>
     </div>;

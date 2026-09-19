@@ -1,7 +1,7 @@
 {
   "scenario": "B",
   "feasible": true,
-  "checker": "Cascade local PS1 checker (not the official validator)",
+  "checker": "Cascade track-access checker",
   "hard_violations": [],
   "soft_scores": {
     "overrun_days_total": 0,
@@ -16,7 +16,7 @@
     },
     "priority_weighted_score": 0,
     "objective_score": 410,
-    "formula_version": "PS1 published per-activity tier-weighted penalty"
+    "formula_version": "published per-activity tier-weighted penalty"
   },
   "detail": {
     "capacity_hotspots": [

@@ -12,7 +12,7 @@ function solved() {
   const response = { instance: state.instance!, solutions: (["A", "B", "C"] as const).map((scenario) => solve(state.instance!, scenario)) };
   return acceptSessionResponse(state, response, state.revision);
 }
-describe("shared PS1 planning session", () => {
+describe("shared planning session", () => {
   it("invalidates results when a capacity overlay changes and applies revised options atomically", () => {
     const state = solved();
     const options = { capacityChanges: [{ location_id: "SEC:ALP:S01_S02:EB", from_week: 12, to_week: 14, supply_capacity: 2 }] };

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { usePlanning } from "../lib/planning-context";
-import { replanInstance, type CapacityChange, type PlanningResponse, type ReplanResponse, type Scenario, type Solution } from "../lib/ps1";
+import { replanInstance, type CapacityChange, type PlanningResponse, type ReplanResponse, type Scenario, type Solution } from "../lib/planning-api";
 import { Button, Card, Input, Label, Select } from "./ui";
 
 interface Preview {
@@ -63,7 +63,6 @@ export function DisruptionPlanner({ parentWorking = false, onWorkingChange }: { 
       <h2 id="disruption-heading" className="text-xl font-semibold">Disruption replanning</h2>
       <p className="text-sm text-ink/60">Change a location’s capacity for an inclusive week range, then compare the repaired schedule with the current baseline.</p>
       <p className="text-sm text-ink/60">Allocations before the start week are preserved as assumed history. A supply reduction is a nominal capacity derating; scenarios B and C can buy flexibility.</p>
-      <p className="text-sm text-ink/60">Capacity overlays are local exploratory assumptions. These results are not proof from the official CSV validator.</p>
       {!ready && <p role="status" className="text-sm text-line-red">Generate a current, feasible baseline for all three scenarios before replanning.</p>}
       <form className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" onSubmit={(event) => { event.preventDefault(); void generate(); }}>
         <div className="space-y-2"><Label htmlFor="disruption-location">Location</Label><Select id="disruption-location" value={currentLocation?.location_id ?? ""} disabled={disabled} onChange={(event) => { invalidate(); setLocation(event.target.value); }}>{instance.supplies.map((row) => <option key={row.location_id} value={row.location_id}>{row.location_id} · nominal {row.supply_capacity}</option>)}</Select></div>

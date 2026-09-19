@@ -1,6 +1,6 @@
 import { createContext, useContext } from "react";
-import type { Activity, Instance, PlanningOptions, Report, Scenario, Solution } from "../../backend/src/ps1/types";
-import type { PlanningResponse, ReplanResponse } from "./ps1";
+import type { Activity, Instance, PlanningOptions, Report, Scenario, Solution } from "../../backend/src/planning/types";
+import type { PlanningResponse, ReplanResponse } from "./planning-api";
 import type { PlanningSession } from "./planning-session";
 
 export interface PlanningContextValue extends PlanningSession {

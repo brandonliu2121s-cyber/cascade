@@ -1,4 +1,4 @@
-# Official PS1 public instance
+# Official track-access public instance
 
 The eight CSV files are copied without modification from:
 https://github.com/aochinwen/NebulaX-Hackathon-ProblemStatement/tree/main/PS1/01_data

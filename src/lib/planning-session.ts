@@ -1,8 +1,8 @@
-import { INPUT_FILES, parseInstance } from "../../backend/src/ps1/instance";
-import { parseCsv, writeCsv } from "../../backend/src/ps1/csv";
-import { validateCapacityChanges } from "../../backend/src/ps1/capacity";
-import type { Activity, Instance, PlanningOptions, Scenario } from "../../backend/src/ps1/types";
-import type { PlanningResponse, ReplanResponse } from "./ps1";
+import { INPUT_FILES, parseInstance } from "../../backend/src/planning/instance";
+import { parseCsv, writeCsv } from "../../backend/src/planning/csv";
+import { validateCapacityChanges } from "../../backend/src/planning/capacity";
+import type { Activity, Instance, PlanningOptions, Scenario } from "../../backend/src/planning/types";
+import type { PlanningResponse, ReplanResponse } from "./planning-api";
 
 export interface PlanningSession {
   files: Record<string, string>;

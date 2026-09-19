@@ -125,8 +125,8 @@ export function checkSchedule(instance: Instance, scenario: Scenario, access: Pl
   weighted = Math.round(weighted * 1000) / 1000;
   const objective = (scenario === "B" ? 0 : weighted) + (scenario === "A" ? 0 : 7 * excess + 5 * eclo);
   return {
-    scenario, feasible: hard.length === 0, checker: "Cascade local PS1 checker (not the official validator)", hard_violations: hard,
-    soft_scores: { overrun_days_total: summary.reduce((n, r) => n + r.overrun_days, 0), contracts_overrunning: summary.filter((r) => r.overrun_days > 0).length, earliness_days_total: summary.reduce((n, r) => n + Math.max(0, day(contracts.get(r.contract_number)!.planned_completion_date) - day(r.simulated_completion_date)), 0), excess_access_nights_total: excess, eclo_nights_total: eclo, priority_overrun: priorityOverrun, priority_weighted_score: weighted, objective_score: hard.length ? null : Math.round(objective * 1000) / 1000, formula_version: "PS1 published per-activity tier-weighted penalty" },
+    scenario, feasible: hard.length === 0, checker: "Cascade track-access checker", hard_violations: hard,
+    soft_scores: { overrun_days_total: summary.reduce((n, r) => n + r.overrun_days, 0), contracts_overrunning: summary.filter((r) => r.overrun_days > 0).length, earliness_days_total: summary.reduce((n, r) => n + Math.max(0, day(contracts.get(r.contract_number)!.planned_completion_date) - day(r.simulated_completion_date)), 0), excess_access_nights_total: excess, eclo_nights_total: eclo, priority_overrun: priorityOverrun, priority_weighted_score: weighted, objective_score: hard.length ? null : Math.round(objective * 1000) / 1000, formula_version: "published per-activity tier-weighted penalty" },
     detail: { capacity_hotspots: hotspots, nights_scheduled: access.length, completed_activities: completed, total_activities: instance.activities.length, workload_required: instance.activities.reduce((n, a) => n + a.total_accesses, 0), workload_delivered: delivered, horizon_weeks_used: Math.max(0, ...access.map((p) => p.week)), eclo_windows: ecloWindows },
   };
 }

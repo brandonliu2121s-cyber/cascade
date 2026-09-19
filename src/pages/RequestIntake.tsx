@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import type { Activity, Instance } from "../../backend/src/ps1/types";
+import type { Activity, Instance } from "../../backend/src/planning/types";
 import { usePlanning } from "../lib/planning-context";
 import { PlanningEmpty, PlanningSummary } from "../components/PlanningViews";
 import { Button, Card, CardContent, Input, Label, Select } from "../components/ui";
@@ -14,7 +14,7 @@ function ActivityForm({ instance, initial, editing }: { instance: Instance; init
   const change = (patch: Partial<Activity>) => setForm(previous => ({ ...previous, ...patch }));
   return <Card><CardContent className="pt-5"><form onSubmit={event => {
     event.preventDefault();
-    try { saveActivity(form, editing ? initial.activity_id : undefined); navigate("/app/requests"); }
+    try { saveActivity(form, editing ? initial.activity_id : undefined); navigate("/app/status"); }
     catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
   }}><fieldset disabled={busy} className="grid gap-5 sm:grid-cols-2">
     <div><Label htmlFor="activity-id">Activity ID</Label><Input id="activity-id" required readOnly={editing} value={form.activity_id} onChange={e => change({ activity_id: e.target.value })} /></div>
@@ -41,5 +41,5 @@ export default function RequestIntake() {
   if (!instance) return <PlanningEmpty />;
   const existing = edit ? instance.activities.find(a => a.activity_id === edit) : undefined;
   const initial = existing ?? { activity_id: "", contract_number: instance.contracts[0].contract_number, activity_type: instance.contracts[0].activity_type, start_location_id: instance.supplies[0].location_id, end_location_id: instance.supplies[0].location_id, total_accesses: 1, planned_start_date: instance.horizon_start, predecessor_activity_id: null, activity_priority: 1 };
-  return <div className="animate-fade-up space-y-6 py-10"><h1 className="text-4xl font-black tracking-tight">{edit ? "Edit activity" : "Intake · Activity"}</h1><PlanningSummary />{edit && !existing ? <p role="alert">Activity {edit} does not exist in this instance.</p> : <ActivityForm key={`${edit ?? "new"}:${revision}`} instance={instance} initial={initial} editing={Boolean(edit)} />}</div>;
+  return <div className="animate-fade-up space-y-6 py-10"><h1 className="text-4xl font-black tracking-tight">{edit ? "Edit request" : "Request · Activity"}</h1><PlanningSummary />{edit && !existing ? <p role="alert">Activity {edit} does not exist in this instance.</p> : <ActivityForm key={`${edit ?? "new"}:${revision}`} instance={instance} initial={initial} editing={Boolean(edit)} />}</div>;
 }

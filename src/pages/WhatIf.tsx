@@ -1,8 +1,8 @@
 import { useRef, useState } from "react";
-import { parseCsv } from "../../backend/src/ps1/csv";
+import { parseCsv } from "../../backend/src/planning/csv";
 import { usePlanning } from "../lib/planning-context";
 import { replaceInstanceRows } from "../lib/planning-session";
-import { solveInstance, type PlanningResponse, type Scenario, type Solution } from "../lib/ps1";
+import { solveInstance, type PlanningResponse, type Scenario, type Solution } from "../lib/planning-api";
 import { PlanningEmpty, PlanningSummary } from "../components/PlanningViews";
 import { TrackDivider } from "../components/transit";
 import { Button, Card, Input, Label, Select } from "../components/ui";

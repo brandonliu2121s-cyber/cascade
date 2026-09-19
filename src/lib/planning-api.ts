@@ -1,10 +1,10 @@
-import type { Instance, Solution, Scenario, Report, PlanningOptions, CapacityChange, ReplanComparison } from "../../backend/src/ps1/types";
+import type { Instance, Solution, Scenario, Report, PlanningOptions, CapacityChange, ReplanComparison } from "../../backend/src/planning/types";
 export type { Instance, Solution, Scenario, Report, PlanningOptions, CapacityChange, ReplanComparison };
-export const PS1_FILES = ["01_LINES.csv", "02_STATIONS.csv", "03_SECTORS.csv", "04_LOCATION_SUPPLY.csv", "05_BUFFER_LOCATION.csv", "06_PARAMETERS.csv", "07_PROJECT_DETAILS.csv", "08_ACTIVITY_DETAILS.csv"];
+export const INSTANCE_FILES = ["01_LINES.csv", "02_STATIONS.csv", "03_SECTORS.csv", "04_LOCATION_SUPPLY.csv", "05_BUFFER_LOCATION.csv", "06_PARAMETERS.csv", "07_PROJECT_DETAILS.csv", "08_ACTIVITY_DETAILS.csv"];
 export interface PlanningResponse { instance: Instance; solutions: Solution[] }
 export interface ReplanResponse extends PlanningResponse { options: PlanningOptions; comparisons: ReplanComparison[] }
 async function request<T>(path: string, body?: unknown): Promise<T> {
-  const response = await fetch(`/api/ps1${path}`, body === undefined ? undefined : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const response = await fetch(`/api/planning${path}`, body === undefined ? undefined : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   const result = await response.json();
   if (!response.ok) throw new Error(result.error || `Request failed (${response.status})`);
   return result as T;

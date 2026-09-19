@@ -29,10 +29,10 @@ export default function RequestsList() {
       {/* Main content area */}
       <div className={`transition-all duration-300 ${detail ? "w-2/3" : "w-full"}`}>
         <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.25em] text-ink/50">Activity registry</p>
-        <h1 className="mt-3 text-4xl font-black tracking-tight">Activities and workloads</h1>
+        <h1 className="mt-3 text-4xl font-black tracking-tight">Status · Activities and workloads</h1>
         <PlanningSummary />
     {!instance ? <PlanningEmpty /> : <>
-      <div className="mt-6 flex flex-wrap gap-3"><Input aria-label="Search activities" placeholder="Search activity, contract or location" className="max-w-md" value={search} onChange={e => setSearch(e.target.value)} /><Select aria-label="Filter activity completion status" className="max-w-xs" value={status} onChange={e => setStatus(e.target.value)}><option value="all">All statuses</option><option value="not-run">Not run</option><option value="complete">Complete</option><option value="incomplete">Incomplete</option></Select><Link className="inline-flex items-center rounded-full border border-ink/20 px-4 text-sm font-medium" to="/app/requests/new">Add activity</Link></div>
+      <div className="mt-6 flex flex-wrap gap-3"><Input aria-label="Search activities" placeholder="Search activity, contract or location" className="max-w-md" value={search} onChange={e => setSearch(e.target.value)} /><Select aria-label="Filter activity completion status" className="max-w-xs" value={status} onChange={e => setStatus(e.target.value)}><option value="all">All statuses</option><option value="not-run">Not run</option><option value="complete">Complete</option><option value="incomplete">Incomplete</option></Select><Link className="inline-flex items-center rounded-full border border-ink/20 px-4 text-sm font-medium" to="/app/request">Add activity</Link></div>
       {stale && <p role="status" className="mt-3 text-sm text-ink/60">Inputs changed. Completion status remains not run until a current schedule is generated.</p>}
       <Card className="mt-4 overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-left text-sm"><caption className="sr-only">Current instance activities and selected scenario workloads</caption><thead><tr>{["Activity", "Contract", "Description", "Required units", "Delivered units", "Priority", "Status", "Actions"].map(h => <th scope="col" key={h} className="whitespace-nowrap p-3 text-xs text-ink/60">{h}</th>)}</tr></thead><tbody>{visible.map(r => <tr key={r.activity.activity_id} className={`border-t border-ink/10 ${detail?.activity.activity_id === r.activity.activity_id ? "bg-ink/5" : ""}`}><th scope="row" className="p-3 font-mono font-normal">{r.activity.activity_id}</th><td className="p-3">{r.activity.contract_number}</td><td className="p-3">{r.contract?.contract_description ?? "—"}</td><td className="p-3">{r.activity.total_accesses}</td><td className="p-3">{current ? r.delivered : "—"}</td><td className="p-3">{r.activity.activity_priority}</td><td className="p-3 whitespace-nowrap">{r.status === "not-run" ? "Not run" : r.status === "complete" ? "Complete" : "Incomplete"}</td><td className="p-3"><Button size="sm" variant="outline" aria-label={`View ${r.activity.activity_id} details`} onClick={() => setDetailId(r.activity.activity_id)}>Details</Button></td></tr>)}{visible.length === 0 && <tr><td colSpan={8} className="p-8 text-center text-ink/50">No activities match these filters.</td></tr>}</tbody></table></div></Card>
       </>}
@@ -93,7 +93,7 @@ export default function RequestsList() {
             </div>
             
             <div className="border-t border-ink/10 pt-4">
-              <Link className="inline-flex w-full justify-center rounded-full border border-ink/20 px-4 py-2 text-sm font-medium hover:bg-ink/5" to={`/app/requests/new?edit=${encodeURIComponent(detail.activity.activity_id)}`}>Edit activity</Link>
+              <Link className="inline-flex w-full justify-center rounded-full border border-ink/20 px-4 py-2 text-sm font-medium hover:bg-ink/5" to={`/app/request?edit=${encodeURIComponent(detail.activity.activity_id)}`}>Edit activity</Link>
             </div>
           </div>
         </div>

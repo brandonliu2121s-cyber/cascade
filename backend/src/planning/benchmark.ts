@@ -70,12 +70,12 @@ export function runBenchmark(sampleCount = 3) {
   }));
   return { schemaVersion: 1, deterministicWorkloads: true, instanceCount: 3, scenarioCount: 3, comparisonCount: rows.length, samplesPerMethod: sampleCount,
     runtimeStatistic: "median wall-clock milliseconds; no warm-up; methods run baseline, repair, fresh in that order",
-    caveats: ["Synthetic local benchmark, not official validator results or representative production performance.", "Heuristic repair does not guarantee minimum churn or global optimality; infeasible outputs are reported as measured.", "Fresh rebuilding can rewrite assumed executed history and is not dispatchable when allFrozenPreserved is false.", "Unchanged baseline metrics have no capacity overlay; repair and fresh solve use the identical reported overlay.", "A zero nominal-capacity overlay is not a total closure in scenarios B/C: their extra-access rules can preserve affected allocations.", "Workloads and schedules are deterministic; measured runtimes vary with the machine and process state."], rows };
+    caveats: ["Synthetic Cascade benchmark; runtimes are not representative of production performance.", "Heuristic repair does not guarantee minimum churn or global optimality; infeasible outputs are reported as measured.", "Fresh rebuilding can rewrite assumed executed history and is not dispatchable when allFrozenPreserved is false.", "Unchanged baseline metrics have no capacity overlay; repair and fresh solve use the identical reported overlay.", "A zero nominal-capacity overlay is not a total closure in scenarios B/C: their extra-access rules can preserve affected allocations.", "Workloads and schedules are deterministic; measured runtimes vary with the machine and process state."], rows };
 }
 
 if (require.main === module) {
   try {
-    if (process.argv.length > 3) throw new Error("Usage: npm run ps1:benchmark -- [output-file.json]");
+    if (process.argv.length > 3) throw new Error("Usage: npm run planning:benchmark -- [output-file.json]");
     const output = JSON.stringify(runBenchmark(), null, 2) + "\n";
     if (process.argv[2]) writeFileSync(resolve(process.argv[2]), output, "utf8"); else process.stdout.write(output);
   } catch (error) { console.error(error instanceof Error ? error.message : error); process.exitCode = 1; }

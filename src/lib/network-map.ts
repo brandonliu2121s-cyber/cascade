@@ -1,5 +1,5 @@
-import { footprint } from "../../backend/src/ps1/topology";
-import type { Activity, Instance, Solution } from "../../backend/src/ps1/types";
+import { footprint } from "../../backend/src/planning/topology";
+import type { Activity, Instance, Solution } from "../../backend/src/planning/types";
 
 /** Line colours by position in the instance; red and orange are left out to stay distinct from the possession highlight. */
 export const LINE_COLORS = ["#005EC4", "#009645", "#9900AA", "#9D5B25", "#0099AA"];
