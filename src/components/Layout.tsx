@@ -3,7 +3,6 @@ import { Navigate, NavLink, Outlet, useNavigate, useSearchParams } from "react-r
 import { StationDot } from "./transit";
 
 const NAV = [
-  { to: "/app/ps1", label: "Planner", color: "#009645", end: true },
   { to: "/app", label: "Dashboard", color: "#D42E12", end: true },
   { to: "/app/requests/new", label: "Intake", color: "#9900AA", end: false },
   { to: "/app/requests", label: "Requests", color: "#005EC4", end: true },
@@ -29,20 +28,19 @@ export default function Layout() {
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-40 border-b border-ink/10 bg-paper/90 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-6 px-6">
-          <NavLink to="/app/ps1" className="flex shrink-0 items-center gap-3">
+          <NavLink to="/app" className="flex items-center gap-3">
             <span className="block h-[26px] w-[26px] overflow-hidden rounded-[7px]">
               <img src="/cascade-logo.png" alt="Cascade logo" className="h-full w-full scale-[1.14] object-cover" />
             </span>
             <span className="font-display text-lg font-extrabold tracking-[0.08em]">CASCADE</span>
           </NavLink>
 
-          <nav className="relative flex min-w-0 items-center gap-1 overflow-x-auto sm:gap-2" aria-label="Main navigation">
+          <nav className="relative flex items-center gap-1 sm:gap-2">
             <div className="absolute left-4 right-4 top-1/2 hidden h-px -translate-y-1/2 bg-ink/15 md:block" aria-hidden />
             {NAV.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
-                title={item.label}
                 end={item.end}
                 className={({ isActive }) =>
                   `relative z-10 flex items-center gap-2 rounded-full px-2 py-1.5 text-xs font-semibold transition-colors sm:px-3 ${
@@ -87,7 +85,7 @@ export default function Layout() {
 
       <footer className="border-t border-ink/10 py-6">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 font-mono text-[11px] text-ink/40">
-          <span>CASCADE · TRACK ACCESS PLANNING</span>
+          <span>CASCADE · ENGINEERING WINDOW 00:00–06:00</span>
           <span>NETWORK: MRT · NIGHT OPS</span>
         </div>
       </footer>

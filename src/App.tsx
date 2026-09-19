@@ -8,12 +8,10 @@ import RequestsList from "./pages/RequestsList";
 import Resources from "./pages/Resources";
 import ScheduleViewer from "./pages/ScheduleViewer";
 import WhatIf from "./pages/WhatIf";
-import PS1Planner from "./pages/PS1Planner";
-import PlanningProvider from "./components/PlanningProvider";
 
 export default function App() {
   return (
-    <PlanningProvider><Routes>
+    <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route element={<Layout />}>
@@ -23,8 +21,7 @@ export default function App() {
         <Route path="/app/schedule" element={<ScheduleViewer />} />
         <Route path="/app/whatif" element={<WhatIf />} />
         <Route path="/app/resources" element={<Resources />} />
-        <Route path="/app/ps1" element={<PS1Planner />} />
       </Route>
-    </Routes></PlanningProvider>
+    </Routes>
   );
 }

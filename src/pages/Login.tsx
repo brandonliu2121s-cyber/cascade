@@ -18,7 +18,7 @@ export default function Login() {
 
   const signIn = () => {
     localStorage.setItem("cascade.persona", selected.name);
-    navigate("/app/ps1");
+    navigate("/app");
   };
 
   return (

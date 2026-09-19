@@ -7,8 +7,7 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "test": "vitest run src --configLoader native",
-    "ps1:export": "tsx src/ps1/cli.ts"
+    "test": "vitest run src"
   },
   "dependencies": {
     "cors": "^2.8.5",
