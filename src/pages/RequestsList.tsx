@@ -28,7 +28,7 @@ export default function RequestsList() {
     <div className="flex gap-6">
       {/* Main content area */}
       <div className={`transition-all duration-300 ${detail ? "w-2/3" : "w-full"}`}>
-        <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.25em] text-ink/50">PS1 · Activity registry</p>
+        <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.25em] text-ink/50">Activity registry</p>
         <h1 className="mt-3 text-4xl font-black tracking-tight">Activities and workloads</h1>
         <PlanningSummary />
     {!instance ? <PlanningEmpty /> : <>

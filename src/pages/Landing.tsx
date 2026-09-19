@@ -211,7 +211,7 @@ export default function Landing() {
 
             <div className="grid gap-3 sm:grid-cols-2">
               {[
-                { step: "01", title: "Capture", body: "POST /api/requests and the Resources page write maintenance demand, crews, equipment and sectors into SQLite." },
+                { step: "01", title: "Capture", body: "The backend API records maintenance demand, crews, equipment and sectors in SQLite." },
                 { step: "02", title: "Assess", body: "The conflict engine checks time overlaps, sector exclusions, crew capacity, equipment contention and work compatibility." },
                 { step: "03", title: "Prioritise", body: "Each request gets a trust score and final priority using 0.6 × urgency + 0.4 × confidence." },
                 { step: "04", title: "Optimise", body: "POST /api/optimise runs the scheduler, persists the result, and returns schedule, conflicts, deferrals and bottlenecks." },

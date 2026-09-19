@@ -7,8 +7,8 @@ import { PlanningSummary, ResultExports } from "../components/PlanningViews";
 import { TrackDivider } from "../components/transit";
 
 const POLICIES = { A: "Fixed supply · flexible completion", B: "Fixed completion · flexible supply", C: "Balanced supply and completion" };
-const MESSAGE = "Local checks implement the published PS1 brief. Official validator verification is still required.";
-export default function PS1Planner() {
+const MESSAGE = "Local checks implement the published challenge brief. Official validator verification is still required.";
+export default function Planner() {
   const { files, options, response: data, selected, setSelected, busy, solution, replaceFiles: store, run, loadPublic: sample, uploadFiles, setOptions } = usePlanning();
   const [filter, setFilter] = useState("");
   const allowHorizonExtension = Boolean(options.allowHorizonExtension);
@@ -30,7 +30,7 @@ export default function PS1Planner() {
         <span className="text-xs text-ink/60">{8 - missing.length}/8 files loaded</span>
       </div>
       <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{PS1_FILES.map((name) => <div key={name} className={`flex items-center gap-2 rounded-lg border p-2 font-mono text-[10px] ${name in files ? "border-line-green/30 bg-line-green/5" : "border-ink/10 text-ink/45"}`}>{name in files ? <CheckCircle2 className="h-3 w-3 shrink-0 text-line-green" /> : <Upload className="h-3 w-3 shrink-0" />}{name}</div>)}</div>
-      <label className="mt-4 flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1" checked={allowHorizonExtension} disabled={busy} onChange={(e) => setOptions({ allowHorizonExtension: e.target.checked })} /><span>Allow planning beyond the declared horizon using flat weekly supply<span className="block text-xs text-ink/60">This assumes the same supply continues after the official planning period.</span></span></label>
+      <label className="mt-4 flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1" checked={allowHorizonExtension} disabled={busy} onChange={(e) => setOptions({ ...options, allowHorizonExtension: e.target.checked })} /><span>Allow planning beyond the declared horizon using flat weekly supply<span className="block text-xs text-ink/60">This assumes the same supply continues after the official planning period.</span></span></label>
       <p className="mt-3 text-xs text-ink/50">Files stay in this browser session. Each solve uses your uploaded instance independently.</p>
     </CardContent></Card>
     {!data && <div className="mt-8 rounded-xl border border-dashed border-ink/20 p-8 text-center text-sm text-ink/50">Load all eight CSVs, then run the scenarios to see the multiweek plan.</div>}

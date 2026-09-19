@@ -94,12 +94,10 @@ export function checkSchedule(instance: Instance, scenario: Scenario, access: Pl
   let excess = 0;
   const hotspots: Report["detail"]["capacity_hotspots"] = [];
   for (const [key, slots] of usage) {
-    const [location_id, weekString] = key.split("|");
-    const week = Number(weekString);
-    const capacity = capacityAt(instance, location_id, week, options);
+    const [location_id, weekString] = key.split("|"); const capacity = capacityAt(instance, location_id, Number(weekString), options);
     const extra = Math.max(0, slots.size - capacity); excess += extra;
     if ((scenario === "A" && extra > 0) || (scenario === "C" && extra > 1)) fail("capacity", `${key}: ${slots.size} groups against capacity ${capacity}`);
-    if (slots.size >= capacity) hotspots.push({ location_id, week, used: slots.size, capacity });
+    if (slots.size >= capacity) hotspots.push({ location_id, week: Number(weekString), used: slots.size, capacity });
   }
   for (const [week, placements] of byWeek) {
     const ids = [...new Set(placements.map((p) => p.activity_id))];

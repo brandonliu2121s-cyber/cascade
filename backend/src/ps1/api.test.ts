@@ -61,4 +61,23 @@ describe("PS1 API", () => {
     const response = await post("/validate", { files: sample.files, scenario: "A", submission: { "SCHEDULE_ACCESS.csv": "activity_id,access_seq,week,eclo,access_night\nA001,1,no,0,1", "SCHEDULE_OCCUPANCY.csv": "activity_id,week,location_id,co_share_group\n", "RESULTS.csv": "scenario,contract_number,simulated_completion_date,overrun_days\n" } });
     expect(response.status).toBe(400);
   });
+  it("replans valid baseline CSVs and rechecks the same week-specific overlays", async () => {
+    const sample = await (await fetch(base + "/sample")).json();
+    const baseline = await (await post("/solve", { files: sample.files })).json();
+    const baselines = Object.fromEntries(baseline.solutions.map((s: { scenario: string; csv: object }) => [s.scenario, s.csv]));
+    const disruption = { location_id: "SEC:ALP:S01_S02:EB", from_week: 12, to_week: 14, supply_capacity: 2 };
+    const response = await post("/replan", { files: sample.files, baselines, disruption });
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.options.capacityChanges).toEqual([disruption]); expect(data.comparisons).toHaveLength(3);
+    for (const solution of data.solutions) {
+      const old = baseline.solutions.find((s: { scenario: string }) => s.scenario === solution.scenario);
+      expect(solution.access.filter((p: { week: number }) => p.week < 12)).toEqual(old.access.filter((p: { week: number }) => p.week < 12));
+      expect(solution.occupancy.filter((p: { week: number }) => p.week < 12)).toEqual(old.occupancy.filter((p: { week: number }) => p.week < 12));
+      const checked = await (await post("/validate", { files: sample.files, scenario: solution.scenario, submission: solution.csv, options: data.options })).json();
+      expect(checked).toEqual(solution.report);
+    }
+    expect((await post("/replan", { files: sample.files, baselines: { ...baselines, A: {} }, disruption })).status).toBe(400);
+    expect((await post("/replan", { files: sample.files, baselines, disruption: { ...disruption, from_week: 0 } })).status).toBe(400);
+  }, 30000);
 });

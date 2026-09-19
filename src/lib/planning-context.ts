@@ -1,6 +1,6 @@
 import { createContext, useContext } from "react";
 import type { Activity, Instance, PlanningOptions, Report, Scenario, Solution } from "../../backend/src/ps1/types";
-import type { PlanningResponse } from "./ps1";
+import type { PlanningResponse, ReplanResponse } from "./ps1";
 import type { PlanningSession } from "./planning-session";
 
 export interface PlanningContextValue extends PlanningSession {
@@ -15,6 +15,7 @@ export interface PlanningContextValue extends PlanningSession {
   saveActivity: (activity: Activity, previousId?: string) => void;
   updateResources: (updates: { supplies?: Instance['supplies']; contracts?: Instance['contracts'] }) => void;
   applyPreview: (files: Record<string, string>, response: PlanningResponse, baseRevision: number) => void;
+  applyReplan: (response: ReplanResponse, baseRevision: number) => void;
   run: () => Promise<void>;
   recheck: () => Promise<void>;
   loadPublic: () => Promise<void>;
