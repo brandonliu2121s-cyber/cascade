@@ -1,84 +1,61 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, BrainCircuit, GitBranch, Radar, SlidersHorizontal, TrainFront, TrendingUp, Wrench } from "lucide-react";
+import { ArrowRight, CalendarDays, FileCheck2, FileUp, GitBranch, MapPinned, SlidersHorizontal, TrainFront, UserRoundPen } from "lucide-react";
 import TransitMap from "../components/TransitMap";
 import { TrackDivider, StationDot } from "../components/transit";
-import { TrustScoreBadge } from "../components/indicators";
-import ScheduleTimeline from "../components/ScheduleTimeline";
 import { Button } from "../components/ui";
-import type { Crew, MaintenanceRequest } from "../lib/types";
 
 const TICKER_ITEMS = [
-  "TRUST ENGINE",
-  "CONFLICT DETECTION",
-  "AUTO-RESOLUTION",
-  "BOTTLENECK ANALYSIS",
-  "WHAT-IF SIMULATION",
-  "NIGHT OPS 00:00–06:00",
+  "EIGHT INPUT CSVs",
+  "SCENARIOS A · B · C",
+  "WEEKLY POSSESSIONS",
+  "LOCAL FEASIBILITY CHECKS",
+  "DISRUPTION REPLANNING",
+  "SUBMISSION EXPORTS",
 ];
 
 const FEATURES = [
   {
-    icon: BrainCircuit,
+    icon: FileUp,
     color: "#9900AA",
-    title: "Trust Engine",
-    body: "Every predictive alert gets a confidence score from 0–100. Single-sensor anomalies and unusual readings are automatically discounted — so the schedule believes the signal, not the noise.",
+    title: "Load the demand book",
+    body: "Upload the eight published instance CSVs or load the public dataset. The planner reads contracts, activities, network locations, supply and safety rules together.",
   },
   {
-    icon: TrendingUp,
+    icon: CalendarDays,
     color: "#005EC4",
-    title: "Smart Prioritisation",
-    body: "Final priority blends operational urgency with trust: 0.6 × priority + 0.4 × trust. A critical job with shaky evidence won't outrank a solid one.",
+    title: "Compare three policies",
+    body: "Run scenarios A, B and C on the same instance. Inspect weekly placements, contract completion, access units, overrun and added supply side by side.",
   },
   {
-    icon: Radar,
+    icon: FileCheck2,
     color: "#D42E12",
-    title: "Conflict Detection",
-    body: "Six checks run against every placement: sector overlap, crew double-booking, equipment contention, adjacent exclusion zones, incompatible work types and deadline breaches.",
+    title: "Check and export",
+    body: "Review local feasibility checks and recheck the exported CSVs. Download SCHEDULE_ACCESS, SCHEDULE_OCCUPANCY and RESULTS for the selected scenario.",
   },
   {
-    icon: Wrench,
+    icon: UserRoundPen,
     color: "#009645",
-    title: "Auto-Resolution",
-    body: "Each conflict comes with concrete alternatives — move the time, change the crew, bundle with a nearby job, split the work, or defer. One click applies it.",
+    title: "Request and Status",
+    body: "Add or edit an activity in Request, then inspect its workload, placements and completion in Status. Input edits mark the schedule stale until you rerun it.",
   },
   {
-    icon: GitBranch,
+    icon: MapPinned,
     color: "#FA9E0D",
-    title: "Bottleneck Analysis",
-    body: "After every run, Cascade names the binding constraint — crew, equipment, sector access or time — with a breakdown of what blocked what.",
+    title: "Explore the network",
+    body: "Use the Map to inspect planned work and closures by line, bound, week or contract, with location details connected to the loaded instance.",
   },
   {
     icon: SlidersHorizontal,
     color: "#9D5B25",
-    title: "What-If Simulator",
-    body: "Add a signalling engineer, a second work train, or 30 more minutes of window. See side-by-side how many jobs clear before you commit.",
-  },
-];
-
-const demoCrews: Crew[] = [
-  { id: 1, name: "Alpha Crew", skills: ["signalling"], available_start: "00:00", available_end: "04:00", max_concurrent_jobs: 2 },
-  { id: 2, name: "Bravo Crew", skills: ["track"], available_start: "00:00", available_end: "06:00", max_concurrent_jobs: 1 },
-];
-
-const demoJobs: MaintenanceRequest[] = [
-  {
-    id: 1, title: "Point machine replacement", type: "planned", location: "Track 12",
-    duration_minutes: 120, deadline: "", priority_score: 90, trust_score: 95, final_priority: 92,
-    required_skills: ["signalling"], required_equipment: [], manpower_count: 4, work_compatibility_tags: [],
-    status: "scheduled", scheduled_start: "2026-09-01T00:15:00", scheduled_end: "2026-09-01T02:15:00", assigned_crew_id: 1, conflict_reason: null,
+    title: "Test what-if changes",
+    body: "Preview supply, workfront or workload edits against the current schedule before applying them to the shared planning instance.",
   },
   {
-    id: 2, title: "Weld repair", type: "manual", location: "Track 14",
-    duration_minutes: 120, deadline: "", priority_score: 80, trust_score: 75, final_priority: 78,
-    required_skills: ["welding"], required_equipment: [], manpower_count: 3, work_compatibility_tags: [],
-    status: "scheduled", scheduled_start: "2026-09-01T02:30:00", scheduled_end: "2026-09-01T04:30:00", assigned_crew_id: 2, conflict_reason: null,
-  },
-  {
-    id: 3, title: "Signal cable test", type: "routine", location: "Track 12",
-    duration_minutes: 60, deadline: "", priority_score: 60, trust_score: 90, final_priority: 72,
-    required_skills: ["signalling"], required_equipment: [], manpower_count: 2, work_compatibility_tags: [],
-    status: "scheduled", scheduled_start: "2026-09-01T02:45:00", scheduled_end: "2026-09-01T03:45:00", assigned_crew_id: 1, conflict_reason: null,
+    icon: GitBranch,
+    color: "#4D6A7A",
+    title: "Replan disruptions",
+    body: "Reduce capacity mid-horizon, keep unaffected earlier work in place, and compare the resulting schedule with the baseline before committing the change.",
   },
 ];
 
@@ -131,18 +108,17 @@ export default function Landing() {
         <div className="mx-auto grid max-w-6xl items-center gap-8 px-6 pb-16 pt-16 sm:pt-24 lg:grid-cols-2">
           <div className="relative z-10">
             <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.3em] text-ink/50">
-              Maintenance Scheduling Optimiser
+              Railway Track Access Planner
             </p>
             <h1 className="mt-5 text-6xl font-black leading-[0.98] tracking-tight sm:text-7xl">
-              Every night,
+              Plan the work.
               <br />
-              the network
+              Protect the
               <br />
-              resets.
+              network.
             </h1>
             <p className="mt-6 max-w-md text-base leading-relaxed text-ink/60">
-              Cascade turns a pile of maintenance requests into one optimised nightly schedule — trust-scored,
-              conflict-checked, and bottleneck-analysed before the first train of the morning.
+              Cascade turns eight planning CSVs into weekly track possessions. Compare three scheduling policies, inspect the impact of each placement, test disruptions and export results in the published submission format.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-4">
               <Link to="/login">
@@ -150,7 +126,7 @@ export default function Landing() {
                   Enter Cascade <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
-              <span className="font-mono text-xs text-ink/45">ENGINEERING WINDOW 00:00–06:00</span>
+              <span className="font-mono text-xs text-ink/45">NORTH–SOUTH · EAST–WEST ACCESS</span>
             </div>
           </div>
           <div className="relative">
@@ -171,50 +147,59 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* live preview strip */}
+      {/* planning preview */}
       <section className="mx-auto max-w-6xl px-6 py-16">
         <div className="grid items-center gap-8 lg:grid-cols-2">
           <div>
             <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.3em] text-ink/50">The output</p>
-            <h2 className="mt-4 text-4xl font-black tracking-tight">A running diagram, not a spreadsheet.</h2>
+            <h2 className="mt-4 text-4xl font-black tracking-tight">A weekly plan you can inspect.</h2>
             <p className="mt-4 max-w-md text-sm leading-relaxed text-ink/60">
-              Crews are tracks. Jobs are trains. You see the whole night at a glance — what's placed, what clashed,
-              and exactly why.
+              Follow activities across the planning horizon, see contract completion and understand why work moves.
+              Cascade's checks flag hard violations before you export each scenario's CSVs.
             </p>
-            <div className="mt-6 flex items-center gap-4 rounded-2xl border border-ink/10 bg-white p-4">
-              <TrustScoreBadge score={88} size={56} />
-              <div className="text-sm">
-                <p className="font-semibold">Trust-scored before it's scheduled</p>
-                <p className="text-ink/55">3 sensors agree · Model certainty: high · No OOD detected</p>
-              </div>
-            </div>
+            <p className="mt-6 rounded-2xl border border-ink/10 bg-white p-4 text-sm text-ink/65">
+              <span className="font-semibold text-ink">One shared instance.</span> Request edits, Status, Dashboard,
+              Map and What-If all reflect the selected scenario. Changed inputs require a fresh run.
+            </p>
           </div>
           <div className="rounded-2xl border border-ink/10 bg-white p-5 shadow-[0_8px_30px_rgba(0,0,0,0.06)]">
-            <ScheduleTimeline crews={demoCrews} jobs={demoJobs} />
+            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-ink/45">Illustrative weekly view</p>
+            <div className="mt-5 grid grid-cols-[minmax(130px,1fr)_repeat(6,minmax(24px,1fr))] gap-2 text-center text-xs">
+              <span className="text-left font-semibold">Activity</span>
+              {[1, 2, 3, 4, 5, 6].map(week => <span key={week} className="font-mono text-ink/50">W{week}</span>)}
+              {[
+                { name: "Track renewal", weeks: [1, 2, 4], color: "bg-line-green" },
+                { name: "Signal works", weeks: [2, 3, 5], color: "bg-line-orange" },
+                { name: "Cable inspection", weeks: [1, 4, 6], color: "bg-line-green" },
+              ].map(activity => <div key={activity.name} className="contents">
+                <span className="border-t border-ink/10 py-3 text-left font-medium">{activity.name}</span>
+                {[1, 2, 3, 4, 5, 6].map(week => <span key={week} className="border-t border-ink/10 py-3">
+                  {activity.weeks.includes(week) && <span className={`mx-auto block h-4 w-4 rounded ${activity.color}`} />}
+                </span>)}
+              </div>)}
+            </div>
           </div>
         </div>
       </section>
 
-      {/* backend flow */}
+      {/* workflow */}
       <section className="border-y border-ink/10 bg-white/70">
         <div className="mx-auto max-w-6xl px-6 py-16">
           <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr]">
             <div>
-              <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.3em] text-ink/50">How the backend works</p>
-              <h2 className="mt-4 text-4xl font-black tracking-tight">A real API, not just mock screens.</h2>
+              <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.3em] text-ink/50">From demand to decision</p>
+              <h2 className="mt-4 text-4xl font-black tracking-tight">A planning workflow for real constraints.</h2>
               <p className="mt-4 text-sm leading-relaxed text-ink/60">
-                The React app talks to an Express backend through Vite's <span className="font-mono">/api</span> proxy.
-                The backend stores requests, crews, equipment and sectors in SQLite, then runs the CAPO scheduling
-                services whenever the duty manager optimises the night.
+                Work from the published eight-file instance format. Cascade schedules contracted activities into shared
+                possessions while accounting for capacity, safety buffers, predecessor order and completion targets.
               </p>
             </div>
-
             <div className="grid gap-3 sm:grid-cols-2">
               {[
-                { step: "01", title: "Capture", body: "POST /api/requests and the Resources page write maintenance demand, crews, equipment and sectors into SQLite." },
-                { step: "02", title: "Assess", body: "The conflict engine checks time overlaps, sector exclusions, crew capacity, equipment contention and work compatibility." },
-                { step: "03", title: "Prioritise", body: "Each request gets a trust score and final priority using 0.6 × urgency + 0.4 × confidence." },
-                { step: "04", title: "Optimise", body: "POST /api/optimise runs the scheduler, persists the result, and returns schedule, conflicts, deferrals and bottlenecks." },
+                { step: "01", title: "Load", body: "Import the official public dataset or upload all eight demand-book CSVs." },
+                { step: "02", title: "Plan", body: "Run scenarios A, B and C and inspect the weekly access timeline and contract outcomes." },
+                { step: "03", title: "Explore", body: "Review Status and Map, then preview input changes or mid-horizon disruptions in What-If." },
+                { step: "04", title: "Export", body: "Recheck the selected result locally and download its three submission CSVs." },
               ].map((item) => (
                 <div key={item.step} className="rounded-2xl border border-ink/10 bg-paper p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
                   <span className="font-mono text-xs font-semibold text-ink/30">{item.step}</span>
@@ -230,13 +215,13 @@ export default function Landing() {
       <TrackDivider color="#111111" stations={5} animated className="mx-auto max-w-6xl px-6 opacity-30" />
 
       {/* features — horizontal rail driven by vertical scroll */}
-      <section ref={sectionRef} className="relative" style={{ height: "320vh" }}>
+      <section ref={sectionRef} className="relative" style={{ height: "360vh" }}>
         <div className="sticky top-0 flex h-screen flex-col justify-center overflow-hidden">
           <div className="mx-auto w-full max-w-6xl px-6">
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div>
                 <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.3em] text-ink/50">Under the hood</p>
-                <h2 className="mt-4 text-4xl font-black tracking-tight">Six systems, one calm night.</h2>
+                <h2 className="mt-4 text-4xl font-black tracking-tight">Everything around the plan.</h2>
               </div>
               <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-ink/40">Scroll to ride the line →</p>
             </div>
@@ -295,7 +280,7 @@ export default function Landing() {
         <div className="mx-auto max-w-6xl px-6 py-20 text-center">
           <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.3em] text-paper/50">Ready for tonight</p>
           <h2 className="mx-auto mt-4 max-w-2xl text-4xl font-black tracking-tight sm:text-5xl">
-            The window opens at 00:00. Be scheduled by 00:01.
+            Turn the demand book into a defensible plan.
           </h2>
           <Link to="/login">
             <Button size="lg" className="mt-8 bg-paper text-ink hover:bg-paper/90">
@@ -304,7 +289,7 @@ export default function Landing() {
           </Link>
         </div>
         <div className="border-t border-paper/10 py-6 text-center font-mono text-[11px] text-paper/40">
-          CASCADE · MAINTENANCE SCHEDULING OPTIMISER
+          CASCADE · RAILWAY TRACK ACCESS PLANNER
         </div>
       </section>
     </div>

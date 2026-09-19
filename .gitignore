@@ -25,3 +25,7 @@ backend/*.db*
 *.njsproj
 *.sln
 *.sw?
+.cache/
+
+# Local coding-agent working plans
+docs/superpowers/

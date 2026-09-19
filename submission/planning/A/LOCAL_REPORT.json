@@ -1,22 +1,22 @@
 {
-  "scenario": "C",
+  "scenario": "A",
   "feasible": true,
-  "checker": "Cascade local PS1 checker (not the official validator)",
+  "checker": "Cascade track-access checker",
   "hard_violations": [],
   "soft_scores": {
-    "overrun_days_total": 147,
-    "contracts_overrunning": 7,
+    "overrun_days_total": 175,
+    "contracts_overrunning": 8,
     "earliness_days_total": 91,
     "excess_access_nights_total": 0,
-    "eclo_nights_total": 4,
+    "eclo_nights_total": 0,
     "priority_overrun": {
       "1": 0,
       "2": 63,
-      "3": 84
+      "3": 112
     },
-    "priority_weighted_score": 873.6,
-    "objective_score": 893.6,
-    "formula_version": "PS1 published per-activity tier-weighted penalty"
+    "priority_weighted_score": 905.8,
+    "objective_score": 905.8,
+    "formula_version": "published per-activity tier-weighted penalty"
   },
   "detail": {
     "capacity_hotspots": [
@@ -496,6 +496,12 @@
       },
       {
         "location_id": "PLAT:BET:H01:EB",
+        "week": 29,
+        "used": 1,
+        "capacity": 1
+      },
+      {
+        "location_id": "PLAT:BET:H01:EB",
         "week": 15,
         "used": 1,
         "capacity": 1
@@ -886,38 +892,29 @@
       },
       {
         "location_id": "PLAT:BET:H01:WB",
-        "week": 29,
+        "week": 30,
         "used": 1,
         "capacity": 1
       },
       {
         "location_id": "PLAT:BET:H02:WB",
-        "week": 29,
+        "week": 30,
         "used": 1,
         "capacity": 1
       },
       {
         "location_id": "SEC:BET:H01_H02:WB",
-        "week": 29,
+        "week": 30,
         "used": 1,
         "capacity": 1
       }
     ],
-    "nights_scheduled": 190,
+    "nights_scheduled": 192,
     "completed_activities": 54,
     "total_activities": 54,
     "workload_required": 192,
     "workload_delivered": 192,
-    "horizon_weeks_used": 29,
-    "eclo_windows": {
-      "BET": [
-        22,
-        23
-      ],
-      "ALP": [
-        14,
-        15
-      ]
-    }
+    "horizon_weeks_used": 30,
+    "eclo_windows": {}
   }
 }

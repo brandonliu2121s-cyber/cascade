@@ -1,5 +1,5 @@
 import type { KeyboardEvent } from "react";
-import type { Instance } from "../../backend/src/ps1/types";
+import type { Instance } from "../../backend/src/planning/types";
 import { lineColor, sectorKey, stationKey, summarise } from "../lib/network-map";
 import type { FeatureKey, Impact, NetworkLayout } from "../lib/network-map";
 

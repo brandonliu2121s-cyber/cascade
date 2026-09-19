@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { INPUT_FILES } from "./instance";
 import { solve } from "./solve";
 import { parseCsv } from "./csv";
-import { newSession, replaceSessionFiles, withSessionOptions, withSessionScenario, acceptSessionResponse, editActivity, editResources, applySessionPreview } from "../../../src/lib/planning-session";
+import { newSession, replaceSessionFiles, withSessionOptions, withSessionScenario, acceptSessionResponse, editActivity, editResources, applySessionPreview, applyReplanResponse } from "../../../src/lib/planning-session";
 
 const files = Object.fromEntries(INPUT_FILES.map((name) => [name, readFileSync(resolve(__dirname, "../../data/official_dataset", name), "utf8")]));
 function solved() {
@@ -12,7 +12,24 @@ function solved() {
   const response = { instance: state.instance!, solutions: (["A", "B", "C"] as const).map((scenario) => solve(state.instance!, scenario)) };
   return acceptSessionResponse(state, response, state.revision);
 }
-describe("shared PS1 planning session", () => {
+describe("shared planning session", () => {
+  it("invalidates results when a capacity overlay changes and applies revised options atomically", () => {
+    const state = solved();
+    const options = { capacityChanges: [{ location_id: "SEC:ALP:S01_S02:EB", from_week: 12, to_week: 14, supply_capacity: 2 }] };
+    const changed = withSessionOptions(state, options);
+    expect(changed.revision).toBe(state.revision + 1); expect(changed.response).toBeNull();
+    const response = { instance: state.instance!, solutions: (["A", "B", "C"] as const).map(s => solve(state.instance!, s, options)), options, comparisons: [] };
+    const applied = applyReplanResponse(state, response, state.revision);
+    expect(applied.files).toEqual(state.files); expect(applied.options).toEqual(options); expect(applied.response).toBe(response); expect(applied.stale).toBe(false);
+    expect(() => applyReplanResponse(changed, response, state.revision)).toThrow(/changed/);
+    expect(newSession(state.files, applied.options).options).toEqual(options);
+    expect(() => withSessionOptions(state, { capacityChanges: [{ ...options.capacityChanges[0], location_id: "missing" }] })).toThrow();
+  });
+  it("rejects infeasible replan application instead of installing unexportable shared results", () => {
+    const state = solved(); const options = { capacityChanges: [{ location_id: "SEC:BET:S15_S16:EB", from_week: 1, to_week: 30, supply_capacity: 0 }] };
+    const response = { instance: state.instance!, solutions: (["A", "B", "C"] as const).map(s => solve(state.instance!, s, options)), options, comparisons: [] };
+    expect(() => applyReplanResponse(state, response, state.revision)).toThrow(/feasible/);
+  });
   it("owns the same schedule and CSVs while changing selected scenario", () => {
     const state = solved(); const b = withSessionScenario(state, "B");
     expect(b.response).toBe(state.response);

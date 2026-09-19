@@ -3,13 +3,12 @@ import { Navigate, NavLink, Outlet, useNavigate, useSearchParams } from "react-r
 import { StationDot } from "./transit";
 
 const NAV = [
+  { to: "/app/planner", label: "Planner", color: "#009645", end: true },
   { to: "/app", label: "Dashboard", color: "#D42E12", end: true },
-  { to: "/app/requests/new", label: "Intake", color: "#9900AA", end: false },
-  { to: "/app/requests", label: "Requests", color: "#005EC4", end: true },
-  { to: "/app/schedule", label: "Schedule", color: "#009645", end: false },
+  { to: "/app/request", label: "Request", color: "#9900AA", end: true },
+  { to: "/app/status", label: "Status", color: "#005EC4", end: true },
   { to: "/app/map", label: "Map", color: "#9D5B25", end: false },
   { to: "/app/whatif", label: "What-If", color: "#FA9E0D", end: false },
-  { to: "/app/resources", label: "Resources", color: "#0099AA", end: true },
 ];
 
 export default function Layout() {
@@ -29,7 +28,7 @@ export default function Layout() {
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-40 border-b border-ink/10 bg-paper/90 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-6 px-6">
-          <NavLink to="/app" className="flex items-center gap-3">
+          <NavLink to="/app/planner" className="flex shrink-0 items-center gap-3">
             <span className="block h-[26px] w-[26px] overflow-hidden rounded-[7px]">
               <img src="/cascade-logo.png" alt="Cascade logo" className="h-full w-full scale-[1.14] object-cover" />
             </span>

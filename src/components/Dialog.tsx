@@ -14,21 +14,31 @@ interface DialogProps {
 export function Dialog({ open, onClose, title, children, className }: DialogProps) {
   useEffect(() => {
     if (!open) return;
+    
+    // Disable body scroll when dialog is open
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    
+    // Handle Escape key
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener("keydown", onKey);
+    };
   }, [open, onClose]);
 
   if (!open) return null;
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4 backdrop-blur-sm overflow-y-auto"
       onClick={onClose}
     >
       <div
         className={cn(
-          "w-full max-w-lg animate-fade-up rounded-2xl border border-ink/10 bg-paper p-6 shadow-2xl",
+          "w-full max-w-lg animate-fade-up rounded-2xl border border-ink/10 bg-paper p-6 shadow-2xl my-8 max-h-[calc(100vh-4rem)] overflow-y-auto",
           className
         )}
         onClick={(e) => e.stopPropagation()}

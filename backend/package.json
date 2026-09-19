@@ -7,7 +7,9 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "test": "vitest run src"
+    "test": "vitest run src --configLoader native",
+    "planning:export": "tsx src/planning/cli.ts",
+    "planning:benchmark": "tsx src/planning/benchmark.ts"
   },
   "dependencies": {
     "cors": "^2.8.5",
