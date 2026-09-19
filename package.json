@@ -3,10 +3,15 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "vite",
     "dev:all": "concurrently -n backend,frontend -c cyan,magenta \"npm run dev --prefix backend\" \"npm run dev\"",
     "build": "tsc -b && vite build",
+    "gcp-build": "npm run build && npm ci --prefix backend && npm run build --prefix backend && npm prune --omit=dev --prefix backend",
+    "start": "node backend/dist/index.js",
     "lint": "oxlint",
     "preview": "vite preview"
   },

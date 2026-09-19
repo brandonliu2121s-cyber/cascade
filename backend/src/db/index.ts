@@ -1,7 +1,8 @@
 import { DatabaseSync } from "node:sqlite";
 import path from "path";
 
-const DB_PATH = path.join(__dirname, "..", "..", "capo.db");
+// Cloud Run (K_SERVICE is set there) only guarantees a writable /tmp, and it is wiped on restart.
+const DB_PATH = process.env.DB_PATH ?? (process.env.K_SERVICE ? "/tmp/capo.db" : path.join(__dirname, "..", "..", "capo.db"));
 
 const db = new DatabaseSync(DB_PATH);
 db.exec("PRAGMA journal_mode = WAL");
