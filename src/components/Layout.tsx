@@ -7,6 +7,7 @@ const NAV = [
   { to: "/app/requests/new", label: "Intake", color: "#9900AA", end: false },
   { to: "/app/requests", label: "Requests", color: "#005EC4", end: true },
   { to: "/app/schedule", label: "Schedule", color: "#009645", end: false },
+  { to: "/app/map", label: "Map", color: "#9D5B25", end: false },
   { to: "/app/whatif", label: "What-If", color: "#FA9E0D", end: false },
   { to: "/app/resources", label: "Resources", color: "#0099AA", end: true },
 ];

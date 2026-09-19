@@ -1,5 +1,6 @@
 import { Route, Routes } from "react-router-dom";
 import Layout from "./components/Layout";
+import PlanningProvider from "./components/PlanningProvider";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -8,19 +9,23 @@ import RequestsList from "./pages/RequestsList";
 import Resources from "./pages/Resources";
 import ScheduleViewer from "./pages/ScheduleViewer";
 import WhatIf from "./pages/WhatIf";
+import PS1Planner from "./pages/PS1Planner";
+import MaintenanceMap from "./pages/MaintenanceMap";
 
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
-      <Route element={<Layout />}>
+      <Route element={<PlanningProvider><Layout /></PlanningProvider>}>
         <Route path="/app" element={<Dashboard />} />
         <Route path="/app/requests" element={<RequestsList />} />
         <Route path="/app/requests/new" element={<RequestIntake />} />
         <Route path="/app/schedule" element={<ScheduleViewer />} />
         <Route path="/app/whatif" element={<WhatIf />} />
         <Route path="/app/resources" element={<Resources />} />
+        <Route path="/app/map" element={<MaintenanceMap />} />
+        <Route path="/app/ps1" element={<PS1Planner />} />
       </Route>
     </Routes>
   );

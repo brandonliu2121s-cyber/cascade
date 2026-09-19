@@ -9,15 +9,18 @@ import dashboardRouter from "./routes/dashboard";
 import crewsRouter from "./routes/crews";
 import equipmentRouter from "./routes/equipment";
 import sectorsRouter from "./routes/sectors";
+import ps1Router from "./routes/ps1";
 
 seedIfEmpty();
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+// PS1 instances upload up to eight CSVs of 2 MB each (routes/ps1.ts), well over express's 100 kb default.
+app.use(express.json({ limit: "20mb" }));
 
 app.use("/api/requests", requestsRouter);
 app.use("/api/schedule", scheduleRouter);
+app.use("/api/ps1", ps1Router);
 app.use("/api", optimiseRouter);
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/crews", crewsRouter);
